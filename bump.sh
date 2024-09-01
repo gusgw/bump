@@ -138,15 +138,11 @@ function slow {
 }
 
 function print_rule {
-    echo
     echo "$RULE"
-    echo
 }
 
 function print_error_rule {
-    >&2 echo
     >&2 echo "$RULE"
-    >&2 echo
 }
 
 export cleanup_functions=()
@@ -168,7 +164,7 @@ function cleanup {
     do
         if [[ $cleanfn == cleanup_* ]]
         then
-            $cleanfn
+            $cleanfn ${c_rc}
         else
             >&2 echo "${STAMP}: DBG not calling $cleanfn"
         fi
