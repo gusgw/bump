@@ -179,7 +179,7 @@ function handle_signal {
     cleanup "${TRAPPED_SIGNAL}"
 }
 
-
+# TODO Check this works or delete
 function size_distribution {
     local folder=$1
     local glob=$2
