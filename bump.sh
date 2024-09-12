@@ -166,7 +166,7 @@ function cleanup {
         then
             $cleanfn ${c_rc}
         else
-            >&2 echo "${STAMP}: DBG not calling $cleanfn"
+            >&2 echo "${STAMP}: not calling $cleanfn"
         fi
     done
     >&2 echo "${STAMP}: . . . all done with code ${c_rc}"
