@@ -54,6 +54,7 @@ function parallel_check_exists {
 }
 export -f parallel_check_exists
 
+export parallel_cleanup_functions=()
 
 function parallel_cleanup {
 
@@ -71,6 +72,15 @@ function parallel_cleanup {
     local rc=$1
     >&2 echo "***"
     >&2 echo "${STAMP} ${PARALLEL_PID}: exiting subprocess cleanly with code ${rc} . . ."
+    for cleanfn in "${parallel_cleanup_functions[@]}"
+    do
+        if [[ $cleanfn == parallel_cleanup_* ]]
+        then
+            $cleanfn ${c_rc}
+        else
+            >&2 echo "${STAMP}: not calling $cleanfn"
+        fi
+    done
     >&2 echo "${STAMP} ${PARALLEL_PID}: . . . all done with code ${rc}"
     exit $rc
 }
