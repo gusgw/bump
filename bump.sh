@@ -199,3 +199,14 @@ function size_distribution {
 
     return 0
 }
+
+function load_report {
+    local lr_label=$1
+    local lr_load_file=$2
+    check_exists $(dirname ${lr_load_file})
+    echo "${lr_label} $(date -Ins) $(awk '{print $1" "$2" "$3}' /proc/loadavg)" >>\
+        ${lr_load_file}
+    rc=$?
+    report $rc "saving system load"
+    return $rc
+}
