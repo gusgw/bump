@@ -106,3 +106,27 @@ function kids {
 }
 export -f kids
 
+function apply_niceload {
+    local an_mainid=$1
+    local an_workers=$2
+    local an_target_load=$3
+
+    parallel_not_empty "top level pid for niceload" "${an_mainid}"
+    parallel_not_empty "file to store the pids of the workers" "${an_workers}"
+    parallel_not_empty "target system load" "${an_target_load}"
+
+    if ! grep -qs "${an_mainid}" "${an_workers}"; then
+        echo "${an_mainid} main job" >> "${an_workers}"
+        niceload -v --load "${an_target_load}" -p "${an_mainid}" &
+        parallel_log_setting "main process under load control" "${an_mainid}"
+        sleep 10
+    fi
+    for an_kid in $(kids ${an_mainid}); do
+        if ! grep -qs "${an_kid}" "${an_workers}"; then
+            echo "${an_kid} child job" >> "${an_workers}"
+            niceload -v --load "${an_target_load}" -p "${an_kid}" &
+            parallel_log_setting "a process under load control" "${an_kid}"
+        fi
+    done
+    return 0
+}
