@@ -130,3 +130,4 @@ function apply_niceload {
     done
     return 0
 }
+export -f apply_niceload
