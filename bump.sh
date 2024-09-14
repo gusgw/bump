@@ -216,22 +216,26 @@ function memory_report {
     local mr_label=$1
     local mr_pid=$2
     local mr_memory_file=$3
-    local mr_VmHWM=$(grep VmHWM /proc/${mr_pid}/status | awk '{print $2}')
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        report $rc "finding VmHWM"
+    if [ -f "/proc/${mr_pid}/status" ]; then
+        local mr_VmHWM=$(grep VmHWM /proc/${mr_pid}/status | awk '{print $2}')
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            report $rc "finding VmHWM"
+        fi
+        local mr_VmRSS=$(grep VmRSS /proc/${mr_pid}/status | awk '{print $2}')
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            report $rc "finding VmRSS"
+        fi
+        echo "${mr_label} ${mr_pid} $(date -Ins) ${mr_VmHWM} ${mr_VmRSS}" >> ${mr_memory_file}
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            report $rc "saving memory usage"
+        fi
+        return $rc
+    else
+        return 1 # process not found
     fi
-    local mr_VmRSS=$(grep VmRSS /proc/${mr_pid}/status | awk '{print $2}')
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        report $rc "finding VmRSS"
-    fi
-    echo "${mr_label} ${mr_pid} $(date -Ins) ${mr_VmHWM} ${mr_VmRSS}" >> ${mr_memory_file}
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        report $rc "saving memory usage"
-    fi
-    return $rc
 }
 
 function free_memory_report {
