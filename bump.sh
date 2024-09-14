@@ -203,10 +203,58 @@ function size_distribution {
 function load_report {
     local lr_label=$1
     local lr_load_file=$2
-    check_exists $(dirname ${lr_load_file})
     echo "${lr_label} $(date -Ins) $(awk '{print $1" "$2" "$3}' /proc/loadavg)" >>\
         ${lr_load_file}
     rc=$?
-    report $rc "saving system load"
+    if [ $rc -ne 0 ]; then
+        report $rc "saving system load"
+    fi
+    return $rc
+}
+
+function memory_report {
+    local mr_label=$1
+    local mr_pid=$2
+    local mr_memory_file=$3
+    local mr_VmHWM=$(grep VmHWM /proc/${mr_pid}/status | awk '{print $2}')
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "finding VmHWM"
+    fi
+    local mr_VmRSS=$(grep VmRSS /proc/${mr_pid}/status | awk '{print $2}')
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "finding VmRSS"
+    fi
+    echo "${mr_label} ${mr_pid} $(date -Ins) ${mr_VmHWM} ${mr_VmRSS}" >> ${mr_memory_file}
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "saving memory usage"
+    fi
+    return $rc
+}
+
+function free_memory_report {
+    local fmr_label=$1
+    local fmr_file=$2
+    local fmr_total=$(free -m | grep Mem | awk '{print $2}')
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "finding total memory"
+    fi
+    local fmr_available=$(free -m | grep Mem | awk '{print $7}')
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "finding available memory"
+    fi
+    local fmr_swap_free=$(free -m | grep Swap | awk '{print $4}')
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        report $rc "finding free swap space"
+    fi
+    echo "${fmr_label} $(date -Ins) ${fmr_available} ${fmr_swap_free}"
+    if [ $rc -ne 0 ]; then
+        report $rc "saving free memory"
+    fi
     return $rc
 }
