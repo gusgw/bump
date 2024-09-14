@@ -4,8 +4,8 @@ function parallel_not_empty {
     local description=$1
     local check=$2
     if [ -z "$check" ]; then
-        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: cannot run without ${description}"
-        parallel_cleanup "${MISSING_INPUT}"
+        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: missing ${description}"
+        return $MISSING_INPUT
     fi
     return 0
 }
@@ -23,32 +23,22 @@ function parallel_log_setting {
 export -f parallel_log_setting
 
 function parallel_report {
-    # Inform the user of a non-zero return
-    # code, cleanup, and if an exit
-    # message is provided as a third argument
-    # also exit
+    # Inform the user of a non-zero return code
     local rc=$1
     local description=$2
-    local exit_message=$3
     >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: ${description} exited with code $rc"
-    if [ -z "$exit_message" ]; then
-        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: continuing . . ."
-    else
-        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: $exit_message"
-        parallel_cleanup $rc
-    fi
+    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: continuing . . ."
     return $rc
 }
 export -f parallel_report
 
 function parallel_check_exists {
     # Make sure a file or folder or link exists
-    # then cleanup and quit if not
     local file_name=$1
     parallel_log_setting "file or directory name that must exist" "$file_name"
     if ! [ -e "$file_name" ]; then
         >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: cannot find $file_name"
-        parallel_cleanup "$MISSING_FILE"
+        return $MISSING_FILE
     fi
     return 0
 }
@@ -119,7 +109,6 @@ function apply_niceload {
         echo "${an_mainid} main job" >> "${an_workers}"
         niceload -v --load "${an_target_load}" -p "${an_mainid}" &
         parallel_log_setting "main process under load control" "${an_mainid}"
-        sleep 10
     fi
     for an_kid in $(kids ${an_mainid}); do
         if ! grep -qs "${an_kid}" "${an_workers}"; then
