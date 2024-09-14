@@ -145,7 +145,7 @@ function print_error_rule {
     >&2 echo "$RULE"
 }
 
-export cleanup_functions=()
+cleanup_functions=()
 
 function cleanup {
 

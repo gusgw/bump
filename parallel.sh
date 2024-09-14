@@ -54,34 +54,31 @@ function parallel_check_exists {
 }
 export -f parallel_check_exists
 
-export parallel_cleanup_functions=()
+parallel_cleanup_function=""
 
 function parallel_cleanup {
 
-    # Exported version of the function cleanup
+    # Version of the function cleanup
     # for use with GNU parallel.
-
-    #########################################
-    # If using the parallel_report function here, #
-    # make sure it has NO THIRD ARGUMENT    #
-    # or there will be an infinite loop!    #
-    # This function may be used to          #
-    # handle trapped signals                #
-    #########################################
 
     local rc=$1
     >&2 echo "***"
-    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: exiting subprocess cleanly with code ${rc} . . ."
-    for cleanfn in "${parallel_cleanup_functions[@]}"
-    do
-        if [[ $cleanfn == parallel_cleanup_* ]]
+    >&2 echo "${STAMP}" "${PARALLEL_PID}" \
+                        "${PARALLEL_JOBSLOT}" \
+                        "${PARALLEL_SEQ}: exiting subprocess cleanly with code ${rc} . . ."
+    if [ -n "$parallel_cleanup_function" ]; then
+        if [[ $parallel_cleanup_function == parallel_cleanup_* ]]
         then
-            $cleanfn ${c_rc}
+            $parallel_cleanup_function ${rc}
         else
-            >&2 echo "${STAMP}: not calling $cleanfn"
+            >&2 echo "${STAMP}" "${PARALLEL_PID}" \
+                                "${PARALLEL_JOBSLOT}" \
+                                "${PARALLEL_SEQ}: not calling $parallel_cleanup_function"
         fi
-    done
-    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: . . . all done with code ${rc}"
+    fi
+    >&2 echo "${STAMP}" "${PARALLEL_PID}" \
+                        "${PARALLEL_JOBSLOT}" \
+                        "${PARALLEL_SEQ}: . . . all done with code ${rc}"
     return $rc
 }
 export -f parallel_cleanup
