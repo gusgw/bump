@@ -4,7 +4,7 @@ function parallel_not_empty {
     local description=$1
     local check=$2
     if [ -z "$check" ]; then
-        >&2 echo "${STAMP} ${PARALLEL_PID}: cannot run without ${description}"
+        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: cannot run without ${description}"
         parallel_cleanup "${MISSING_INPUT}"
     fi
     return 0
@@ -18,7 +18,7 @@ function parallel_log_setting {
     local setting=$2
     parallel_not_empty "date stamp" "${STAMP}"
     parallel_not_empty "$description" "$setting"
-    >&2 echo "${STAMP} ${PARALLEL_PID}: ${description} is ${setting}"
+    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: ${description} is ${setting}"
 }
 export -f parallel_log_setting
 
@@ -30,11 +30,11 @@ function parallel_report {
     local rc=$1
     local description=$2
     local exit_message=$3
-    >&2 echo "${STAMP} ${PARALLEL_PID}: ${description} exited with code $rc"
+    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: ${description} exited with code $rc"
     if [ -z "$exit_message" ]; then
-        >&2 echo "${STAMP} ${PARALLEL_PID}: continuing . . ."
+        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: continuing . . ."
     else
-        >&2 echo "${STAMP} ${PARALLEL_PID}: $exit_message"
+        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: $exit_message"
         parallel_cleanup $rc
     fi
     return $rc
@@ -47,7 +47,7 @@ function parallel_check_exists {
     local file_name=$1
     parallel_log_setting "file or directory name that must exist" "$file_name"
     if ! [ -e "$file_name" ]; then
-        >&2 echo "${STAMP} ${PARALLEL_PID}: cannot find $file_name"
+        >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: cannot find $file_name"
         parallel_cleanup "$MISSING_FILE"
     fi
     return 0
@@ -71,7 +71,7 @@ function parallel_cleanup {
 
     local rc=$1
     >&2 echo "***"
-    >&2 echo "${STAMP} ${PARALLEL_PID}: exiting subprocess cleanly with code ${rc} . . ."
+    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: exiting subprocess cleanly with code ${rc} . . ."
     for cleanfn in "${parallel_cleanup_functions[@]}"
     do
         if [[ $cleanfn == parallel_cleanup_* ]]
@@ -81,7 +81,7 @@ function parallel_cleanup {
             >&2 echo "${STAMP}: not calling $cleanfn"
         fi
     done
-    >&2 echo "${STAMP} ${PARALLEL_PID}: . . . all done with code ${rc}"
+    >&2 echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: . . . all done with code ${rc}"
     return $rc
 }
 export -f parallel_cleanup
