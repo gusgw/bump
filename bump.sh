@@ -252,7 +252,7 @@ function free_memory_report {
     if [ $rc -ne 0 ]; then
         report $rc "finding free swap space"
     fi
-    echo "${fmr_label} $(date -Ins) ${fmr_available} ${fmr_swap_free}"
+    echo "${fmr_label} $(date -Ins) ${fmr_available} ${fmr_swap_free}" >> ${fmr_file}
     if [ $rc -ne 0 ]; then
         report $rc "saving free memory"
     fi
