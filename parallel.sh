@@ -82,7 +82,7 @@ function parallel_cleanup {
         fi
     done
     >&2 echo "${STAMP} ${PARALLEL_PID}: . . . all done with code ${rc}"
-    exit $rc
+    return $rc
 }
 export -f parallel_cleanup
 
