@@ -88,6 +88,17 @@ function check_contains {
     return 0
 }
 
+function check_dependency {
+    # Make sure a command is available
+    # and fail if not.
+    local cd_cmd=$1
+    log_setting "command to check for is" ${cd_cmd}$
+    which "${cd_cmd}" || report ${MISSING_CMD} \
+                                "looking for ${cd_cmd}" \
+                                "exiting cleanly"
+    return 0
+}
+
 function path_as_name {
     # Convert a path to a string that
     # can be used as a name. This is sometimes
