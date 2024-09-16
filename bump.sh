@@ -205,7 +205,7 @@ function size_distribution {
 
     find "${folder}" -type f -wholename "${glob}" -print0 |\
         xargs -0 ls -l |\
-        awk "${awk1}END${awk2}" |\
+        gawk "${awk1}END${awk2}" |\
         sort -n
 
     return 0
@@ -214,7 +214,7 @@ function size_distribution {
 function load_report {
     local lr_label=$1
     local lr_load_file=$2
-    echo "${lr_label} $(date -Ins) $(awk '{print $1" "$2" "$3}' /proc/loadavg)" >>\
+    echo "${lr_label} $(date -Ins) $(gawk '{print $1" "$2" "$3}' /proc/loadavg)" >>\
         ${lr_load_file}
     rc=$?
     if [ $rc -ne 0 ]; then
@@ -228,12 +228,12 @@ function memory_report {
     local mr_pid=$2
     local mr_memory_file=$3
     if [ -f "/proc/${mr_pid}/status" ]; then
-        local mr_VmHWM=$(grep VmHWM /proc/${mr_pid}/status | awk '{print $2}')
+        local mr_VmHWM=$(grep VmHWM /proc/${mr_pid}/status | gawk '{print $2}')
         rc=$?
         if [ $rc -ne 0 ]; then
             report $rc "finding VmHWM"
         fi
-        local mr_VmRSS=$(grep VmRSS /proc/${mr_pid}/status | awk '{print $2}')
+        local mr_VmRSS=$(grep VmRSS /proc/${mr_pid}/status | gawk '{print $2}')
         rc=$?
         if [ $rc -ne 0 ]; then
             report $rc "finding VmRSS"
@@ -252,17 +252,17 @@ function memory_report {
 function free_memory_report {
     local fmr_label=$1
     local fmr_file=$2
-    local fmr_total=$(free -m | grep Mem | awk '{print $2}')
+    local fmr_total=$(free -m | grep Mem | gawk '{print $2}')
     rc=$?
     if [ $rc -ne 0 ]; then
         report $rc "finding total memory"
     fi
-    local fmr_available=$(free -m | grep Mem | awk '{print $7}')
+    local fmr_available=$(free -m | grep Mem | gawk '{print $7}')
     rc=$?
     if [ $rc -ne 0 ]; then
         report $rc "finding available memory"
     fi
-    local fmr_swap_free=$(free -m | grep Swap | awk '{print $4}')
+    local fmr_swap_free=$(free -m | grep Swap | gawk '{print $4}')
     rc=$?
     if [ $rc -ne 0 ]; then
         report $rc "finding free swap space"
