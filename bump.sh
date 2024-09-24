@@ -190,27 +190,6 @@ function handle_signal {
     cleanup "${TRAPPED_SIGNAL}"
 }
 
-# TODO Check this works or delete
-function size_distribution {
-    local folder=$1
-    local glob=$2
-
-    log_setting "folder for file size distribution" "$folder"
-    log_setting "glob for file size distribution" "$glob"
-
-    check_exists "$folder"
-
-    awk1='{size[int(log($5)/log(2))]++}'
-    awk2='{for (i in size) printf("%10d %3d\n", 2^i, size[i])}'
-
-    find "${folder}" -type f -wholename "${glob}" -print0 |\
-        xargs -0 ls -l |\
-        gawk "${awk1}END${awk2}" |\
-        sort -n
-
-    return 0
-}
-
 function load_report {
     local lr_label=$1
     local lr_load_file=$2
