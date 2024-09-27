@@ -107,13 +107,13 @@ function apply_niceload {
 
     if ! grep -qs "${an_mainid}" "${an_workers}"; then
         echo "${an_mainid} main job" >> "${an_workers}"
-        niceload -v --load "${an_target_load}" -p "${an_mainid}" &
+        niceload -v --load "${an_target_load}" ${OPT_NICELOAD} -p "${an_mainid}" &
         parallel_log_setting "main process under load control" "${an_mainid}"
     fi
     for an_kid in $(kids ${an_mainid}); do
         if ! grep -qs "${an_kid}" "${an_workers}"; then
             echo "${an_kid} child job" >> "${an_workers}"
-            niceload -v --load "${an_target_load}" -p "${an_kid}" &
+            niceload -v --load "${an_target_load}" ${OPT_NICELOAD} -p "${an_kid}" &
             parallel_log_setting "a process under load control" "${an_kid}"
         fi
     done
