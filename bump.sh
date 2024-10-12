@@ -92,7 +92,7 @@ function check_dependency {
     # Make sure a command is available
     # and fail if not.
     local cd_cmd=$1
-    log_setting "command to check for is" ${cd_cmd}$
+    log_setting "command to check for is" "${cd_cmd}"
     which "${cd_cmd}" || report ${MISSING_CMD} \
                                 "looking for ${cd_cmd}" \
                                 "exiting cleanly"
@@ -251,4 +251,33 @@ function free_memory_report {
         report $rc "saving free memory"
     fi
     return $rc
+}
+
+function poll_reports {
+
+    local pr_pid_monitor=$1
+    local pr_pid_label=$2
+    local pr_wait=$3
+    not_empty "$pr_pid_monitor" "PID to monitor in loop condition"
+    not_empty "$pr_pid_label" "PID to use for labelling resource reports"
+    not_empty "$pr_wait" "time between reports"
+
+    while kill -0 "$pr_pid_monitor" 2> /dev/null; do
+
+        sleep "${pr_wait}"
+
+        load_report "${job} run" "${logs}/${STAMP}.${job}.${pr_pid_label}.load"
+
+        if [ -f "$ramdisk/workers" ]; then
+            while read pid; do
+                if kill -0 "${pid%% *}" 2> /dev/null; then
+                    memory_report "${job} run" "${pid%% *}" \
+                        "${logs}/${STAMP}.${job}.${pid%% *}.memory"
+                fi
+            done < $ramdisk/workers
+        fi
+
+        free_memory_report "${job} run" \
+                           "${logs}/${STAMP}.${job}.${pr_pid_label}.free"
+    done
 }
