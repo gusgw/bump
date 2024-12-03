@@ -19,7 +19,7 @@ script_path=$(dirname $(realpath  $0))
 function set_stamp {
     # Store a stamp used to label files
     # and messages created in this script.
-    export STAMP="$(date '+%Y%m%d'-$(hostnamectl hostname))"
+    export STAMP="$(date '+%Y%m%dT%H%M%S'-$(hostnamectl hostname))"
     return 0
 }
 
