@@ -68,6 +68,20 @@ function check_exists {
     return 0
 }
 
+function check_md5 {
+    local cm_md5=$1
+    local cm_file=$2
+    not_empty "$cm_md5" "required MD5"
+    not_empty "$cm_file" "file to check"
+    md5=$(md5sum | sed 's/ .*//')
+    if [[ "$md5" == "$cm_md5" ]]; then
+        >&2 echo "${STAMP}: $cm_file has correct md5"
+    else
+        report 1 "${checking} $cm_file" "wrong md5"
+    fi
+    report 0
+}
+
 function check_contains {
     # Make sure a file exists and contains
     # the given string.
