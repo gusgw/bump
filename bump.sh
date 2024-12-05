@@ -77,7 +77,7 @@ function check_md5 {
     if [[ "$md5" == "$cm_md5" ]]; then
         >&2 echo "${STAMP}: $cm_file has correct md5"
     else
-        report 1 "${checking} $cm_file" "wrong md5"
+        report 1 "checking $cm_file" "wrong md5"
     fi
     report 0
 }
