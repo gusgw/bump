@@ -126,29 +126,33 @@ function check_exists {
 # Args:
 #   $1 - Expected MD5 checksum
 #   $2 - Path to file to check
-# Returns: 0 on success, 1 on checksum mismatch
+# Returns: 0 on success, CORRUPT_DATA on checksum mismatch
 function check_md5 {
     local cm_md5="$1"
     local cm_file="$2"
     log_setting "required MD5" "$cm_md5"
     log_setting "file to check" "$cm_file"
     
-    # Check if file exists first
-    if [[ ! -f "$cm_file" ]]; then
-        echo "${STAMP}: file $cm_file does not exist" >&2
-        return 1
+    # Check if file exists using check_exists
+    check_exists "$cm_file"
+    
+    local md5 rc
+    md5=$(md5sum "${cm_file}" | awk '{print $1}')
+    rc=$?
+    
+    if [[ $rc -ne 0 ]]; then
+        report $rc "computing md5sum for $cm_file"
+        return $rc
     fi
     
-    local md5
-    md5=$(md5sum "${cm_file}" | awk '{print $1}')
     echo "$md5" >&2
     
     if [[ "$md5" == "${cm_md5}" ]]; then
         echo "${STAMP}: $cm_file has correct md5" >&2
         return 0
     else
-        report 1 "checking $cm_file" "wrong md5"
-        return 1
+        report $CORRUPT_DATA "checking $cm_file" "wrong md5"
+        return $CORRUPT_DATA
     fi
 }
 
@@ -297,8 +301,9 @@ cleanup_functions=()
 # Cleanup functions must have names starting with "cleanup_".
 # Can be used as a signal handler.
 # 
-# WARNING: Do not call report() with exit message from cleanup
-# functions to avoid infinite loop!
+# WARNING: If using the report function here, do not use
+#          a third argument! If you do you will get an
+#          infinite loop.
 # 
 # Usage: cleanup exit_code
 # Args:

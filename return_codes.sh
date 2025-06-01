@@ -25,7 +25,8 @@ MISSING_CMD=65        # Required command not found in PATH
 # Configuration Issues (70-79)
 # These codes indicate problems with configuration or safety checks
 BAD_CONFIGURATION=70  # Configuration file or setting is invalid
-UNSAFE=71            # Operation deemed unsafe to proceed
+UNSAFE=71             # Operation deemed unsafe to proceed
+CORRUPT_DATA=72       # Not continuing due to corrupt data
 
 # System Failures (80-89)
 # These codes indicate system-level failures
