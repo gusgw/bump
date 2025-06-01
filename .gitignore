@@ -1,6 +1,9 @@
 .*swp
+
+# Ignore any robot experiments
 CLAUDE.md
 .claude
 .idea
 .junie
+*.prompt
 
