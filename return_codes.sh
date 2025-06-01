@@ -33,7 +33,7 @@ CORRUPT_DATA=72       # Not continuing due to corrupt data
 SYSTEM_UNIT_FAILURE=80  # Systemd unit or service failure
 SECURITY_FAILURE=81     # Security check or permission failure
 NETWORK_ERROR=83        # Network connectivity or remote resource failure
-FILESYSTEM_ERROR=84     # Error from routine file management
+FILING_ERROR=84         # Error from routine file management
 
 # Signal Handling (110-119)
 # These codes are used when handling system signals
