@@ -79,6 +79,23 @@ function not_empty {
     return 0
 }
 
+# log_message: Log a timestamped message to stderr
+# 
+# Outputs a message prefixed with the global STAMP timestamp to stderr.
+# Validates that both STAMP and the message are non-empty before logging.
+# 
+# Usage: log_message "message to log"
+# Args:
+#   $1 - Message to log
+# Returns: 0 on success
+function log_message {
+    local ls_message="$1"
+    not_empty "date stamp" "${STAMP}"
+    not_empty "date stamp" "${ls_message}"
+    echo "${STAMP}: ${ls_message}" >&2
+}
+
+
 # log_setting: Log a setting value to stderr
 # 
 # Validates that both the setting and STAMP are non-empty, then logs

@@ -36,6 +36,7 @@ function parallel_not_empty {
 }
 export -f parallel_not_empty
 
+
 # parallel_log_setting: Log a setting value to stderr (parallel-safe)
 # 
 # Parallel-safe version of log_setting. Includes parallel job identifiers
@@ -55,6 +56,24 @@ function parallel_log_setting {
     return 0
 }
 export -f parallel_log_setting
+
+# parallel_log_message: Log a timestamped message to stderr (parallel-safe)
+# 
+# Parallel-safe version of log_message. Includes parallel job identifiers
+# in the output for better tracking of concurrent jobs.
+# 
+# Usage: parallel_log_message "message to log"
+# Args:
+#   $1 - Message to log
+# Returns: 0 on success, MISSING_INPUT if parameters are empty
+function parallel_log_message {
+    local message="$1"
+    parallel_not_empty "date stamp" "${STAMP}" || return $?
+    parallel_not_empty "message" "${message}" || return $?
+    echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: ${message}" >&2
+    return 0
+}
+export -f parallel_log_message
 
 # parallel_report: Report an error without exiting (parallel-safe)
 # 
