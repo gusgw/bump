@@ -22,8 +22,8 @@ MISSING_DISK=63       # Required disk or device not available
 MISSING_MOUNT=64      # Required mount point not mounted
 MISSING_CMD=65        # Required command not found in PATH
 
-# Configuration Issues (70-79)
-# These codes indicate problems with configuration or safety checks
+# Configuration and data Issues (70-79)
+# These codes indicate problems with configuration or data or safety checks
 BAD_CONFIGURATION=70  # Configuration file or setting is invalid
 UNSAFE=71             # Operation deemed unsafe to proceed
 CORRUPT_DATA=72       # Not continuing due to corrupt data
@@ -33,6 +33,7 @@ CORRUPT_DATA=72       # Not continuing due to corrupt data
 SYSTEM_UNIT_FAILURE=80  # Systemd unit or service failure
 SECURITY_FAILURE=81     # Security check or permission failure
 NETWORK_ERROR=83        # Network connectivity or remote resource failure
+FILESYSTEM_ERROR=84     # Error from routine file management
 
 # Signal Handling (110-119)
 # These codes are used when handling system signals
