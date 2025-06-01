@@ -363,7 +363,7 @@ find /data -name "*.txt" | parallel -j 4 process_file
 
 All parallel functions follow the same pattern as core functions but:
 - Return error codes instead of calling cleanup
-- Include job identifiers in output (PARALLEL_PID, PARALLEL_JOBSLOT, PARALLEL_SEQ)
+- Include GNU Parallel job identifiers in output (PARALLEL_PID, PARALLEL_JOBSLOT, PARALLEL_SEQ)
 - Are exported for use in subshells
 
 ## Examples
