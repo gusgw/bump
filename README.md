@@ -1,11 +1,10 @@
-# Bump - Bash Utility Management Package
+# BUMP - Bash Utility Management Package
 
-Bump is a comprehensive bash utility library that provides robust error handling, system monitoring, and process management capabilities for shell scripts. It includes support for both sequential and parallel execution using GNU Parallel.
+BUMP is a library for use in bash utilities designed to bring reliability and monitoring capabilities to shell scripts. In system administration and automation, bash scripts often start simple but grow complex as they handle edge cases, errors, and resource constraints. BUMP addresses this by providing a framework that transforms fragile bash scripts into robust applications. BUMP provides robust error handling, system monitoring, and process management capabilities for shell scripts. It includes support for both sequential and parallel execution using GNU Parallel.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Components](#components)
@@ -18,14 +17,46 @@ Bump is a comprehensive bash utility library that provides robust error handling
 
 ## Overview
 
-Bump provides a standardized framework for bash scripts with:
-- Consistent error handling and exit codes
-- Resource validation (files, directories, commands)
-- System resource monitoring (CPU, memory, load)
-- Process management and signal handling
-- GNU Parallel integration for concurrent operations
+### Why BUMP?
 
-## Features
+Modern system administrators and automation engineers face several challenges when writing bash scripts:
+
+- **Error Handling**: bash scripts can fail silently or with cryptic errors. BUMP provides standardized exit codes and error reporting, making debugging and monitoring significantly easier.
+
+- **Resource Management**: Production environments demand careful resource ise. BUMP includes monitoring for CPU load, memory usage, and process states, allowing scripts to adapt to system conditions.
+
+- **Parallel Execution**: As data volumes grow and systems scale, sequential processing becomes a bottleneck. BUMP integrates with [GNU Parallel](https://www.gnu.org/software/parallel/), for concurrent execution while maintaining consistent error handling and resource tracking across parallel jobs.
+
+- **Signal Handling and Process Management**: Graceful shutdown is crucial for maintaining data integrity. BUMP provides robust signal handling and cleanup mechanisms, ensuring that interrupted scripts leave systems in a clean state.
+
+### Applications
+
+BUMP excels in three primary domains:
+
+**1. System Maintenance and Monitoring**
+
+System administrators use BUMP to create reliable maintenance scripts that:
+- Perform rolling backups with automatic verification and cleanup
+- Monitor service health with intelligent alerting thresholds  
+- Automate log rotation with resource-aware compression
+- Manage disk space with safe cleanup of old files
+
+**2. Data Pipeline Management**
+
+Data engineers leverage BUMP for building resilient ETL pipelines that:
+- Process large datasets with automatic parallelization
+- Handle network interruptions with retry logic
+- Track resource consumption across pipeline stages
+
+**3. Scientific Batch Processing**
+
+Researchers and HPC users benefit from BUMP's capabilities for:
+- Managing long-running simulations with checkpoint/restart functionality
+- Distributing computational workloads across available cores
+- Monitoring memory usage to prevent out-of-memory failures
+- Generating performance metrics for optimization
+
+### Features
 
 - **Standardized Exit Codes**: Consistent error codes across all scripts
 - **Automatic Cleanup**: Register cleanup functions that run on exit
@@ -34,6 +65,31 @@ Bump provides a standardized framework for bash scripts with:
 - **Parallel Execution**: Safe versions of functions for use with GNU Parallel
 - **Signal Handling**: Graceful handling of interrupts and termination signals
 - **Timestamp Management**: Consistent timestamp generation for logs and files
+
+### How It Works
+
+BUMP follows the Unix philosophy of composable tools. Scripts source the BUMP libraries to gain access to a set of functions:
+
+```bash
+#!/bin/bash
+script_path=$(dirname $(realpath $0))
+. ${script_path}/bump/return_codes.sh
+. ${script_path}/bump/bump.sh
+
+# Your script now has access to robust error handling, monitoring, and more
+```
+
+This approach means existing scripts can be enhanced with BUMP features without complete rewrites.
+
+### Design Philosophy
+
+- **Fail Fast, Fail Clearly**: Errors are detected early and reported with meaningful messages and standardized exit codes
+- **Resource Awareness**: Scripts should adapt to system conditions rather than blindly consuming resources
+- **Defensive Programming**: Every operation that can fail is checked, logged, and handled appropriately
+- **Composability**: Functions work independently and can be combined to build complex workflows
+
+## Getting Started
+
 
 ## Installation
 
@@ -50,6 +106,12 @@ chmod +x bump/*.sh
 ```
 
 ## Quick Start
+
+For system administrators familiar with bash scripting, BUMP offers immediate value with minimal learning curve. The library's functions follow predictable patterns and integrate naturally with existing bash idioms. Advanced users can leverage the parallel execution capabilities to scale their scripts across multiple cores or even distributed systems.
+
+This README provides comprehensive documentation, practical examples, and best practices developed from years of production use in high-stakes environments. Whether you're automating routine maintenance tasks or building complex data processing pipelines, BUMP helps you write bash scripts that are reliable, maintainable, and performant.
+
+For more information about bash scripting fundamentals, see the [GNU Bash manual](https://www.gnu.org/software/bash/manual/). For examples of bash scripts in HPC environments, refer to [Swinburne's HPC documentation](https://supercomputing.swin.edu.au/docs/) which demonstrates many patterns that BUMP was designed to support.
 
 Basic usage in your bash script:
 
