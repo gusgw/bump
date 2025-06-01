@@ -160,11 +160,12 @@ Core utility functions including:
 ### 3. parallel.sh
 GNU Parallel-safe versions of core functions:
 
-- `parallel_not_empty`
-- `parallel_log_setting`
-- `parallel_report`
-- `parallel_check_exists`
-- `parallel_cleanup`
+- `parallel_not_empty` - Validate non-empty values
+- `parallel_log_message` - Log simple messages
+- `parallel_log_setting` - Log configuration values
+- `parallel_report` - Report errors without exiting
+- `parallel_check_exists` - Verify file/directory exists
+- `parallel_cleanup` - Execute cleanup for a parallel job
 - `kids` - Find all child processes
 - `apply_niceload` - Apply load limiting to process trees
 
@@ -318,6 +319,11 @@ find /data -name "*.txt" | parallel -j 4 process_file
   ```
 
 #### Logging Functions
+
+- **log_message**: Log a simple message
+  ```bash
+  log_message "starting database backup"
+  ```
 
 - **log_setting**: Log a configuration value
   ```bash

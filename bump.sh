@@ -39,7 +39,7 @@ function set_stamp {
     # Use hostname command as fallback if hostnamectl is not available
     local hostname
     if command -v hostnamectl >/dev/null 2>&1; then
-        hostname=$(hostnamectl hostname 2>/dev/null) || hostname=$(hostname)
+        hostname=$(hostnamectl --static 2>/dev/null) || hostname=$(hostname)  
     else
         hostname=$(hostname)
     fi
