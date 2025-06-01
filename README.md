@@ -1,7 +1,7 @@
 # BUMP - Bash Utility Management Package
 
 BUMP is a library for use in bash utilities designed to bring reliability and monitoring capabilities to shell scripts. In system administration and automation, bash scripts often start simple but grow more complex as they handle edge cases, errors, and resource constraints. 
-BUMP addresses this by providing a framework that transforms fragile bash scripts into robust applications. BUMP provides robust error handling, system monitoring, and process management capabilities for shell scripts. It includes support for both sequential and parallel execution using GNU Parallel.
+BUMP transforms fragile bash scripts into robust applications. BUMP provides error handling, system monitoring, and process management capabilities for shell scripts. It includes support for sequential and parallel execution using GNU Parallel.
 
 ## Table of Contents
 
