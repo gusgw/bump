@@ -206,37 +206,54 @@ function apply_niceload {
     local an_mainid="$1"
     local an_workers="$2"
     local an_target_load="$3"
-    
+
     parallel_not_empty "top level pid for niceload" "${an_mainid}" || return $?
     parallel_not_empty "file to store the pids of the workers" "${an_workers}" || return $?
     parallel_not_empty "target system load" "${an_target_load}" || return $?
-    
+
     # Check if niceload is available
     if ! command -v niceload >/dev/null 2>&1; then
         echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: niceload command not found" >&2
         return $MISSING_CMD
     fi
-    
+
+    # Validate OPT_NICELOAD to prevent command injection
+    # Only allow safe niceload options: alphanumeric, hyphens, equals, underscores
+    if [[ -n "${OPT_NICELOAD:-}" ]]; then
+        if ! [[ "${OPT_NICELOAD}" =~ ^[a-zA-Z0-9_=-]+$ ]]; then
+            echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: invalid OPT_NICELOAD value (contains unsafe characters)" >&2
+            return 1
+        fi
+    fi
+
     # Ensure workers file directory exists
     local workers_dir
     workers_dir=$(dirname "$an_workers")
     if [[ ! -d "$workers_dir" ]]; then
         mkdir -p "$workers_dir" || return $?
     fi
-    
+
     # Apply niceload to main process if not already controlled
     if ! grep -qs "^${an_mainid} " "${an_workers}" 2>/dev/null; then
         echo "${an_mainid} main job" >> "${an_workers}"
-        niceload -v --load "${an_target_load}" ${OPT_NICELOAD:-} -p "${an_mainid}" &
+        if [[ -n "${OPT_NICELOAD:-}" ]]; then
+            niceload -v --load "${an_target_load}" ${OPT_NICELOAD} -p "${an_mainid}" &
+        else
+            niceload -v --load "${an_target_load}" -p "${an_mainid}" &
+        fi
         parallel_log_setting "main process under load control" "${an_mainid}"
     fi
-    
+
     # Apply niceload to all child processes
     local an_kid
     for an_kid in $(kids "${an_mainid}"); do
         if ! grep -qs "^${an_kid} " "${an_workers}" 2>/dev/null; then
             echo "${an_kid} child job" >> "${an_workers}"
-            niceload -v --load "${an_target_load}" ${OPT_NICELOAD:-} -p "${an_kid}" &
+            if [[ -n "${OPT_NICELOAD:-}" ]]; then
+                niceload -v --load "${an_target_load}" ${OPT_NICELOAD} -p "${an_kid}" &
+            else
+                niceload -v --load "${an_target_load}" -p "${an_kid}" &
+            fi
             parallel_log_setting "a process under load control" "${an_kid}"
         fi
     done
