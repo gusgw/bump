@@ -103,6 +103,8 @@ function assert_not_contains {
 function cleanup {
     local c_rc="${1:-0}"
     echo "cleanup called with exit code: $c_rc" >&2
+    cleanup_called=1
+    cleanup_code=$c_rc
     return $c_rc
 }
 
@@ -157,9 +159,10 @@ echo "localhost" >> "$test_file"
 
 # Test 1: Regex special characters should be treated as literals
 # The string ".*" as regex matches everything, but as literal should not match
+cleanup_called=0
+cleanup_code=0
 check_contains "$test_file" ".*" 2>/dev/null
-rc=$?
-if [[ $rc -ne 0 ]]; then
+if [[ $cleanup_called -eq 1 ]]; then
     test_pass "check_contains treats '.*' as literal (not regex wildcard)"
 else
     test_fail "check_contains treats '.*' as regex instead of literal string"
@@ -167,9 +170,10 @@ fi
 
 # Test 2: Another regex example - "[a-z]" should match literally
 echo "The text [a-z] is here" > "$test_file"
+cleanup_called=0
+cleanup_code=0
 check_contains "$test_file" "[a-z]" 2>/dev/null
-rc=$?
-if [[ $rc -eq 0 ]]; then
+if [[ $cleanup_called -eq 0 ]]; then
     test_pass "check_contains finds literal '[a-z]'"
 else
     test_fail "check_contains should find literal '[a-z]' string"
@@ -177,9 +181,10 @@ fi
 
 # Test 3: The string "^localhost$" as regex matches line, as literal doesn't exist
 echo "localhost" > "$test_file"
+cleanup_called=0
+cleanup_code=0
 check_contains "$test_file" "^localhost$" 2>/dev/null
-rc=$?
-if [[ $rc -ne 0 ]]; then
+if [[ $cleanup_called -eq 1 ]]; then
     test_pass "check_contains treats '^localhost$' as literal (not regex anchor)"
 else
     test_fail "check_contains treats '^localhost$' as regex instead of literal"

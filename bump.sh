@@ -189,14 +189,14 @@ function check_md5 {
 }
 
 # check_contains: Verify that a file exists and contains a specific string
-# 
-# Checks if the file exists and contains the specified string.
-# Calls cleanup with appropriate exit code on failure.
-# 
+#
+# Checks if the file exists and contains the specified string as a literal match
+# (not as a regex pattern). Calls cleanup with appropriate exit code on failure.
+#
 # Usage: check_contains "/path/to/file" "search_string"
 # Args:
 #   $1 - Path to file to check
-#   $2 - String to search for in the file
+#   $2 - Literal string to search for in the file
 # Returns: 0 if file exists and contains string, calls cleanup on failure
 function check_contains {
     local cc_file_name="$1"
@@ -204,9 +204,9 @@ function check_contains {
     log_setting "file name to check" "$cc_file_name"
     log_setting "string to check for" "$cc_string"
     not_empty "date stamp" "$STAMP"
-    
+
     if [[ -e "$cc_file_name" ]]; then
-        if ! grep -qs "${cc_string}" "${cc_file_name}"; then
+        if ! grep -qsF "${cc_string}" "${cc_file_name}"; then
             echo "${STAMP}: ${cc_file_name} does not contain ${cc_string}" >&2
             cleanup "$BAD_CONFIGURATION"
         fi
