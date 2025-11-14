@@ -421,6 +421,155 @@ else
 fi
 
 #############################################
+# Test 13: poll_reports function
+#############################################
+test_start "poll_reports function"
+
+# Test with all required parameters and globals
+if [[ -f /proc/loadavg ]] && command -v free >/dev/null 2>&1; then
+    poll_test_dir="$TEST_DIR/poll_test"
+    mkdir -p "$poll_test_dir"
+
+    # Set up required global variables
+    job="test_job"
+    logs="$poll_test_dir"
+    ramdisk="$poll_test_dir/ramdisk"
+    mkdir -p "$ramdisk"
+
+    # Create a short-lived background process
+    (sleep 0.5) &
+    monitor_pid=$!
+    label_pid="test_label"
+
+    # Call poll_reports (should run for ~0.5 seconds)
+    poll_reports "$monitor_pid" "$label_pid" 0.1 2>/dev/null &
+    poll_pid=$!
+
+    # Wait for the monitoring to complete
+    wait $monitor_pid 2>/dev/null
+    sleep 0.3  # Give poll_reports time to detect process exit
+
+    # Check that log files were created
+    load_file=$(ls "$poll_test_dir"/*.${job}.${label_pid}.load 2>/dev/null | head -1)
+    free_file=$(ls "$poll_test_dir"/*.${job}.${label_pid}.free 2>/dev/null | head -1)
+
+    if [[ -f "$load_file" ]]; then
+        test_pass "poll_reports created load log file"
+    else
+        test_fail "poll_reports did not create load log file"
+    fi
+
+    if [[ -f "$free_file" ]]; then
+        test_pass "poll_reports created free memory log file"
+    else
+        test_fail "poll_reports did not create free memory log file"
+    fi
+
+    # Verify poll_reports terminates when monitored process exits
+    sleep 0.2
+    if ! kill -0 $poll_pid 2>/dev/null; then
+        test_pass "poll_reports terminated when monitored process exited"
+    else
+        test_fail "poll_reports did not terminate properly"
+        kill $poll_pid 2>/dev/null
+    fi
+
+    # Test with workers file
+    echo "$$" > "$ramdisk/workers"
+
+    (sleep 0.5) &
+    monitor_pid2=$!
+
+    poll_reports "$monitor_pid2" "test2" 0.1 2>/dev/null &
+    poll_pid2=$!
+
+    wait $monitor_pid2 2>/dev/null
+    sleep 0.3
+
+    # Check if memory log was created for worker
+    memory_file=$(ls "$poll_test_dir"/*.${job}.$$.memory 2>/dev/null | head -1)
+    if [[ -f "$memory_file" ]]; then
+        test_pass "poll_reports created memory log for worker process"
+    else
+        test_fail "poll_reports did not create memory log for worker"
+    fi
+
+    wait $poll_pid2 2>/dev/null
+
+    # Clean up globals
+    unset job logs ramdisk
+else
+    test_pass "Skipping poll_reports test (missing requirements)"
+fi
+
+# Test poll_reports parameter validation
+test_start "poll_reports parameter validation"
+
+# Override not_empty to track calls instead of exiting
+validation_failed=0
+function not_empty {
+    local description="$1"
+    local value="$2"
+    if [[ -z "$value" ]]; then
+        validation_failed=1
+        return 1
+    fi
+    return 0
+}
+
+# Test with missing monitor PID
+validation_failed=0
+poll_reports "" "label" 1 2>/dev/null
+if [[ $validation_failed -eq 1 ]]; then
+    test_pass "poll_reports validates monitor PID parameter"
+else
+    test_fail "poll_reports should validate monitor PID"
+fi
+
+# Test with missing label PID
+validation_failed=0
+poll_reports "123" "" 1 2>/dev/null
+if [[ $validation_failed -eq 1 ]]; then
+    test_pass "poll_reports validates label PID parameter"
+else
+    test_fail "poll_reports should validate label PID"
+fi
+
+# Test with missing wait time
+validation_failed=0
+poll_reports "123" "label" "" 2>/dev/null
+if [[ $validation_failed -eq 1 ]]; then
+    test_pass "poll_reports validates wait time parameter"
+else
+    test_fail "poll_reports should validate wait time"
+fi
+
+# Test with missing job global
+validation_failed=0
+unset job
+logs="/tmp"
+poll_reports "123" "label" 1 2>/dev/null
+if [[ $validation_failed -eq 1 ]]; then
+    test_pass "poll_reports validates job global variable"
+else
+    test_fail "poll_reports should validate job global"
+fi
+
+# Test with missing logs global
+validation_failed=0
+job="test"
+unset logs
+poll_reports "123" "label" 1 2>/dev/null
+if [[ $validation_failed -eq 1 ]]; then
+    test_pass "poll_reports validates logs global variable"
+else
+    test_fail "poll_reports should validate logs global"
+fi
+
+# Restore not_empty function
+. "${script_path}/bump.sh"
+
+#############################################
 # Test Summary
 #############################################
 echo -e "\n========================================="
