@@ -227,23 +227,464 @@ According to the README:
 
 ---
 
-## Next Steps (Tasks 1.2-1.5)
+---
 
-**Task 1.2:** Analyze GNU Parallel best practices
-- Research parallel job patterns
-- Understand typical use cases
-- Determine if monitoring/validation functions are used in parallel contexts
+## Task 1.2: GNU Parallel Best Practices
 
-**Task 1.3:** Create realistic usage scenarios
-- Design concrete examples for each missing function
-- Determine if each function is actually needed
-- Show code examples demonstrating need OR alternative approaches
+### Real-World Example: Marathon Framework
 
-**Task 1.4:** Evaluate parallel_cleanup array vs string
-- Determine if multiple cleanup functions are needed in parallel jobs
-- Show example requiring multiple cleanups OR justify single cleanup
+**Location:** `/home/gusgw/src/cavewall/marathon/run.sh`
 
-**Task 1.5:** Make final decisions
-- Decide which functions to implement
-- Decide which functions are not needed
-- Update PLAN.md bug list accordingly
+**Production Usage Pattern:**
+```bash
+# Main script sources both bump.sh and parallel.sh
+. ${run_path}/bump/bump.sh
+. ${run_path}/bump/parallel.sh
+
+# Worker function (exported for GNU Parallel)
+function run {
+    local work="$1"
+    local logs="$2"
+    local ramdisk="$3"
+    local job="$4"
+    local input="$5"
+
+    # PATTERN 1: Parallel functions log settings
+    parallel_log_setting "workspace" "${work}"
+    parallel_log_setting "job" "${job}"
+    parallel_log_setting "file to work on" "${input}"
+
+    # PATTERN 2: Parallel functions validate resources
+    parallel_check_exists "${input}"
+    mkdir -p "${work}" || parallel_report "$?" "make folder if necessary"
+    parallel_check_exists "${work}"
+
+    # PATTERN 3: Worker launches subprocess and monitors it
+    some_long_running_command &
+    mainid=$!
+
+    # Worker uses load management in loop
+    while kill -0 "${mainid}" 2> /dev/null; do
+        sleep ${WAIT}
+        apply_niceload "${mainid}" "${ramdisk}/workers" "${target_load}"
+    done
+
+    # PATTERN 4: Workers report errors but continue
+    wait $mainid || parallel_report $? "waiting for run to finish"
+
+    # PATTERN 5: Worker cleans up at end
+    parallel_cleanup 0
+    return 0
+}
+export -f run
+
+# Main process launches parallel
+find "${work}" -name "*.input" |\
+    parallel --results "${logs}/run/{/}/" \
+             --joblog "${logs}/${STAMP}.${job}.run.log" \
+             --jobs "${MAX_SUBPROCESSES}" \
+        run "${work}" "${logs}" "${ramdisk}" "${job}" {} &
+parallel_pid=$!
+
+# PATTERN 6: Main process monitors resources (NOT workers)
+poll_reports "$parallel_pid" "$$" "${WAIT}" &
+report_pid=$!
+
+# Main process waits for completion
+while kill -0 "$parallel_pid" 2> /dev/null; do
+    sleep ${WAIT}
+done
+
+# Main process cleans up
+cleanup 0
+```
+
+### Key Patterns Observed
+
+**1. Division of Responsibilities:**
+- **Main Process:** Monitoring, resource management, cleanup
+- **Workers:** Validation, logging, processing, error reporting
+
+**2. Functions Used by Workers:**
+- ✓ `parallel_log_setting` - Extensive logging of configuration
+- ✓ `parallel_check_exists` - File/directory validation
+- ✓ `parallel_report` - Error reporting without exiting
+- ✓ `parallel_cleanup` - Cleanup at worker completion
+- ✓ `apply_niceload` - Load management for worker subprocesses
+
+**3. Functions Used by Main Process:**
+- ✓ `poll_reports` - Monitor parallel_pid resource usage
+- ✓ `cleanup` - Final cleanup after all workers complete
+
+**4. Functions NOT Used:**
+- ✗ `parallel_check_md5` - Not needed in this workflow
+- ✗ `parallel_check_contains` - Not needed in this workflow
+- ✗ `parallel_memory_report` - Monitoring done by main process
+- ✗ `parallel_load_report` - Monitoring done by main process
+- ✗ `parallel_free_memory_report` - Monitoring done by main process
+
+### GNU Parallel Best Practices (from documentation)
+
+**1. Function Export:**
+```bash
+function my_func() { echo "in my_func $1"; }
+export -f my_func
+parallel my_func ::: 1 2 3
+```
+
+**2. Resource Control:**
+- Use `--jobs N` to control parallelism
+- Use `--load 75%` to monitor system load
+- Use `--halt soon,fail=10%` for early failure detection
+
+**3. Job Design:**
+- Workers should be self-contained
+- Workers should validate their own inputs
+- Workers should log their own progress
+- Workers should return error codes, not exit
+
+**4. Monitoring:**
+- Main process monitors overall resources
+- Main process tracks parallel job PID
+- Workers focus on their specific task
+
+### Conclusions from Real-World Usage
+
+**Validated Needs:**
+1. ✅ Logging functions - Extensively used by workers
+2. ✅ Validation functions - Workers validate their inputs
+3. ✅ Error reporting - Workers report but don't exit
+4. ✅ Load management - Workers manage subprocess load
+5. ✅ Basic cleanup - Workers clean up their resources
+
+**Not Needed:**
+1. ❌ Monitoring in workers - Main process handles monitoring
+2. ❌ Complex validation - Not used in practice
+3. ❌ Dependency checking - Done once at script start
+
+---
+
+## Task 1.3: Realistic Usage Scenarios
+
+### Scenario 1: Data Pipeline (Real - from Marathon)
+
+**Use Case:** Process input files in parallel, each worker validates and transforms data
+
+**Functions Needed:**
+- `parallel_log_setting` - Log which file worker is processing
+- `parallel_check_exists` - Validate input file exists
+- `parallel_report` - Report errors without killing other workers
+- `parallel_cleanup` - Clean up worker temp files
+
+**NOT Needed:**
+- `parallel_check_md5` - Checksums validated before parallel processing
+- `parallel_memory_report` - Main process monitors all workers
+
+### Scenario 2: Batch Image Processing (Hypothetical)
+
+**Use Case:** Convert images in parallel, validate output quality
+
+**Potential Functions:**
+- `parallel_check_md5` - Verify input images not corrupted
+- `parallel_check_exists` - Validate output directory
+- `parallel_log_setting` - Log processing parameters
+
+**Analysis:**
+- `check_md5` could be useful here BUT:
+  - Checksum validation is CPU-intensive
+  - Better done before/after parallel processing
+  - Main process can validate checksums more efficiently
+
+**Alternative:** Validate checksums in main process before starting workers
+
+### Scenario 3: Log Analysis (Hypothetical)
+
+**Use Case:** Search log files for patterns in parallel
+
+**Potential Functions:**
+- `parallel_check_contains` - Search for patterns in each file
+- `parallel_check_exists` - Validate log file exists
+
+**Analysis:**
+- `check_contains` searches files for content
+- But check_contains uses `grep` which already works in parallel
+- No need for parallel wrapper
+
+**Alternative:** Use `parallel grep "pattern" ::: *.log` directly
+
+### Scenario 4: System Administration (Hypothetical)
+
+**Use Case:** Check dependencies on multiple systems
+
+**Potential Functions:**
+- `parallel_check_dependency` - Verify commands exist
+
+**Analysis:**
+- Dependency checking is a one-time operation at script start
+- No need to check repeatedly in each worker
+- Main script should validate dependencies before launching workers
+
+**Alternative:** Use regular `check_dependency` in main process
+
+### Decision Matrix
+
+| Function | Real Usage | Hypothetical Usage | Decision |
+|----------|-----------|-------------------|----------|
+| `parallel_check_md5` | None | Possible but inefficient | ❌ NOT NEEDED |
+| `parallel_check_contains` | None | Redundant with grep | ❌ NOT NEEDED |
+| `parallel_check_dependency` | None | Wrong pattern | ❌ NOT NEEDED |
+| `parallel_path_as_name` | None | No side effects | ❌ NOT NEEDED* |
+| `parallel_load_report` | None | Wrong pattern | ❌ NOT NEEDED |
+| `parallel_memory_report` | None | Wrong pattern | ❌ NOT NEEDED |
+| `parallel_free_memory_report` | None | Wrong pattern | ❌ NOT NEEDED |
+| `parallel_slow` | None | Anti-pattern | ❌ NOT NEEDED |
+
+\* `path_as_name` is a pure utility function with no side effects, exits, or cleanup. Regular version works fine in parallel contexts.
+
+---
+
+## Task 1.4: Evaluate parallel_cleanup Array vs String
+
+### Current Implementation
+
+**Code (parallel.sh line 118):**
+```bash
+parallel_cleanup_function=""  # Single string variable
+```
+
+**Usage:**
+```bash
+parallel_cleanup_function="parallel_cleanup_test"
+
+function parallel_cleanup {
+    if [[ -n "$parallel_cleanup_function" ]]; then
+        if [[ "$parallel_cleanup_function" == parallel_cleanup_* ]]; then
+            if declare -f "$parallel_cleanup_function" >/dev/null 2>&1; then
+                "$parallel_cleanup_function" "${rc}" || true
+            fi
+        fi
+    fi
+}
+```
+
+### Real-World Usage (Marathon run.sh)
+
+**Pattern:**
+```bash
+function run {
+    # ... worker logic ...
+
+    # Single cleanup at end
+    parallel_cleanup 0
+    return 0
+}
+```
+
+**Observation:** Marathon uses `parallel_cleanup` but does NOT register any custom cleanup function
+
+### Analysis: Do Parallel Workers Need Multiple Cleanup Functions?
+
+**Arguments for Array (Multiple Functions):**
+1. Consistency with main cleanup (uses array)
+2. Complex workers might need multiple cleanup steps
+3. Libraries could register cleanup functions
+
+**Arguments Against Array (Single Function):**
+1. No real-world usage of even ONE custom cleanup function
+2. Workers are typically simple and self-contained
+3. Worker lifecycle is short - easier to cleanup manually
+4. Adding complexity for unused feature
+5. Main process handles complex cleanup, not workers
+
+### Real-World Comparison
+
+**Main Process Cleanup:**
+- Long-running script
+- Multiple resource acquisitions
+- Complex state management
+- Needs multiple cleanup functions
+
+**Worker Process Cleanup:**
+- Short-lived (processes one item)
+- Simple resource usage
+- Limited state
+- Single cleanup (if any) is sufficient
+
+### Decision: Keep Single String
+
+**Rationale:**
+1. Zero usage of custom cleanup functions in production
+2. Workers are too simple to need multiple cleanup functions
+3. Simpler implementation is better when unused
+4. Can always change to array later if real need emerges
+5. Main process already handles complex cleanup
+
+**Recommendation:** Document that workers should be simple and self-contained. Complex cleanup belongs in main process.
+
+---
+
+## Task 1.5: Final Decisions
+
+### Functions Implemented and Validated ✅
+
+**Keep these - used in production:**
+
+1. **parallel_not_empty** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Input validation in workers
+   - **Keep:** YES - fundamental validation
+
+2. **parallel_log_setting** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Extensive use in Marathon workers
+   - **Keep:** YES - critical for debugging parallel jobs
+
+3. **parallel_log_message** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** General message logging in workers
+   - **Keep:** YES - useful for worker progress tracking
+
+4. **parallel_report** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Error reporting without exit in Marathon
+   - **Keep:** YES - essential for parallel error handling
+
+5. **parallel_check_exists** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Input validation in Marathon workers
+   - **Keep:** YES - validates worker inputs
+
+6. **parallel_cleanup** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Called in Marathon workers (no custom function though)
+   - **Keep:** YES - standard worker completion
+   - **Note:** Keep as single string variable (not array)
+
+7. **kids** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Process tree traversal for apply_niceload
+   - **Keep:** YES - required for load management
+
+8. **apply_niceload** ✅
+   - **Status:** Implemented and tested
+   - **Usage:** Load management in Marathon workers
+   - **Keep:** YES - critical for system resource management
+
+### Functions NOT Needed ❌
+
+**Do not implement - no valid use case:**
+
+1. **parallel_check_md5** ❌
+   - **Rationale:** Checksum validation is expensive, should be done in main process before/after parallel execution
+   - **Alternative:** Use regular `check_md5` in main process
+   - **Remove from bug list:** YES
+
+2. **parallel_check_contains** ❌
+   - **Rationale:** Content searching already works with parallel + grep
+   - **Alternative:** `parallel grep "pattern" ::: files` or use regular `check_contains`
+   - **Remove from bug list:** YES
+
+3. **parallel_check_dependency** ❌
+   - **Rationale:** Dependencies checked once at script start, not per-worker
+   - **Alternative:** Use regular `check_dependency` in main process before launching parallel
+   - **Remove from bug list:** YES
+
+4. **parallel_path_as_name** ❌
+   - **Rationale:** Pure utility function with no side effects, exits, or state. Regular version works fine in parallel.
+   - **Alternative:** Use regular `path_as_name` - it's already safe
+   - **Remove from bug list:** YES
+
+5. **parallel_slow** ❌
+   - **Rationale:** Anti-pattern - workers shouldn't wait for external processes. Main process handles synchronization.
+   - **Alternative:** Use regular `slow` in main process
+   - **Remove from bug list:** YES
+
+6. **parallel_load_report** ❌
+   - **Rationale:** Monitoring done by main process using `poll_reports`, not by individual workers
+   - **Alternative:** Main process monitors with `poll_reports`
+   - **Remove from bug list:** YES
+
+7. **parallel_memory_report** ❌
+   - **Rationale:** Main process monitors all workers collectively
+   - **Alternative:** Main process uses `poll_reports` which calls `memory_report`
+   - **Remove from bug list:** YES
+
+8. **parallel_free_memory_report** ❌
+   - **Rationale:** System-wide monitoring belongs in main process
+   - **Alternative:** Main process uses `poll_reports` which calls `free_memory_report`
+   - **Remove from bug list:** YES
+
+### Summary
+
+**Result:** All 8 currently implemented functions are validated and should be kept.
+
+**Result:** All 9 "missing" functions are NOT needed and should NOT be implemented.
+
+**Impact on Bug List:**
+- Remove 9 items from "missing parallel functions" section
+- Document design pattern: workers validate and process, main process monitors
+
+### Design Pattern Documentation
+
+**Parallel Job Design Pattern:**
+
+```
+Main Process:
+├── Validate dependencies (check_dependency)
+├── Validate inputs (check_md5, check_contains)
+├── Launch parallel workers
+├── Monitor resources (poll_reports)
+│   ├── load_report
+│   ├── memory_report
+│   └── free_memory_report
+├── Wait for completion
+└── Cleanup (cleanup)
+
+Worker Process (per input):
+├── Validate input exists (parallel_check_exists)
+├── Log configuration (parallel_log_setting)
+├── Process input
+│   ├── Launch subprocess if needed
+│   └── Manage subprocess load (apply_niceload)
+├── Report errors if any (parallel_report)
+└── Cleanup worker resources (parallel_cleanup)
+```
+
+**Key Principles:**
+1. **Validate once:** Main process validates dependencies and shared resources
+2. **Monitor centrally:** Main process monitors all workers collectively
+3. **Workers are simple:** Workers validate their specific input and process it
+4. **Errors don't stop others:** Workers report errors but don't exit entire process
+5. **Cleanup is minimal:** Workers cleanup their specific resources, main handles complex cleanup
+
+---
+
+## Appendix: Marathon Framework Analysis
+
+**Script:** `/home/gusgw/src/cavewall/marathon/run.sh`
+
+**Purpose:** Parallel computation framework for embarrassingly parallel jobs using GNU Parallel
+
+**Key Features:**
+- Coordinates data fetching with rclone
+- Manages parallel job execution with load balancing
+- Handles AWS Spot instance interruptions
+- Provides continuous output synchronization
+
+**Parallel Usage:**
+- Sources both `bump.sh` and `parallel.sh`
+- Exports worker function `run()`
+- Uses GNU Parallel with `--results` and `--joblog`
+- Main process monitors with `poll_reports`
+- Workers use `apply_niceload` for subprocess management
+
+**Functions Used:**
+- parallel_log_setting (lines 200-207)
+- parallel_check_exists (lines 209, 221)
+- parallel_report (lines 220, 257, 261)
+- parallel_cleanup (line 275)
+- apply_niceload (lines 239, 248)
+- poll_reports (line 301 - in main process)
+- cleanup (line 322 - in main process)
+
+This production usage perfectly demonstrates the intended design pattern.
