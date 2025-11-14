@@ -79,23 +79,23 @@ In priority order:
 
 ### Tasks
 
-- [ ] **0.1: Set up bashcov coverage tool**
+- [x] **0.1: Set up bashcov coverage tool**
   - Install bashcov: `gem install bashcov` or equivalent
   - Configure bashcov for the project
   - Document how to run coverage: `bashcov ./run_all_tests.sh`
   - **Verify:** Can generate coverage report
   - **Commit:** "Set up bashcov for test coverage measurement"
 
-- [ ] **0.2: Measure baseline coverage**
+- [x] **0.2: Measure baseline coverage**
   - Run bashcov on current test suite
   - Generate HTML coverage report
   - Document baseline coverage percentage
   - Identify uncovered functions and lines
   - **Verify:** Have baseline coverage metrics
   - **Output:** Save baseline_coverage.html or similar
-  - **Commit:** "Document baseline test coverage metrics"
+  - **Commit:** "Measure baseline test coverage"
 
-- [ ] **0.3: Fix test environment issues**
+- [x] **0.3: Fix test environment issues**
   - Fix cleanup callback tests (4 failures in test_parallel.sh and test_coverage.sh)
     - Use subprocess approach for true isolation
     - OR adjust tests to verify cleanup_functions array population instead
@@ -105,7 +105,7 @@ In priority order:
   - **Verify:** Run `./run_all_tests.sh` - only regression tests should fail
   - **Commit:** "Fix test environment issues for clean baseline"
 
-- [ ] **0.4: Add tests for uncovered functions**
+- [x] **0.4: Add tests for uncovered functions**
   - Review bashcov report for uncovered functions
   - Add tests to appropriate test files:
     - test_bump.sh for basic functions
@@ -115,17 +115,17 @@ In priority order:
   - Focus on critical paths and error conditions
   - **Verify:** Coverage increases toward 90%+
   - **Verify:** All new tests pass
-  - **Commit:** "Add tests for previously uncovered functions"
+  - **Commit:** "Add comprehensive tests for poll_reports function"
 
-- [ ] **0.5: Add edge case and error path tests**
+- [x] **0.5: Add edge case and error path tests**
   - Test error conditions (missing files, bad permissions, invalid input)
   - Test boundary conditions (empty strings, very long paths, special characters)
   - Test signal handling edge cases
   - **Verify:** Coverage at or above 90%
   - **Verify:** All tests pass
-  - **Commit:** "Add edge case and error path tests"
+  - **Commit:** "Add comprehensive edge case and error path tests"
 
-- [ ] **0.6: Document coverage results**
+- [x] **0.6: Document coverage results**
   - Update TEST_BASELINE.md or create COVERAGE_REPORT.md
   - List final coverage percentage
   - List any remaining uncovered code with justification
