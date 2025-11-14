@@ -1,0 +1,11 @@
+# Bashcov configuration for BUMP test suite
+# See: https://github.com/infertux/bashcov
+
+# Skip coverage for test files themselves
+skip_uncovered true
+
+# Coverage threshold (percentage)
+# minimum_coverage 90
+
+# Output directory for coverage reports
+# output_path "coverage"
