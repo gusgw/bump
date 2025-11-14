@@ -167,14 +167,14 @@ Before implementing any bug fixes, we have established a comprehensive test base
 
 ### Overall Test Coverage
 
-| Test Suite | Test Cases | Assertions | Pass | Fail | Pass Rate |
-|------------|-----------|------------|------|------|-----------|
-| test_bump.sh | 13 | 45 | 45 | 0 | 100% |
-| test_bump_advanced.sh | 6 | 18 | 18 | 0 | 100% |
-| test_parallel.sh | 10 | 51 | 50 | 1 | 98% |
-| test_coverage.sh | 14 | 55 | 51 | 4 | 93% |
-| test_regression.sh | 7 | 10 | 5 | 5 | 50%* |
-| **TOTAL** | **50** | **179** | **169** | **10** | **94%** |
+| Test Suite            | Test Cases | Assertions | Pass    | Fail   | Pass Rate |
+|-----------------------|------------|------------|---------|--------|-----------|
+| test_bump.sh          | 13         | 45         | 45      | 0      | 100%      |
+| test_bump_advanced.sh | 6          | 18         | 18      | 0      | 100%      |
+| test_parallel.sh      | 10         | 51         | 50      | 1      | 98%       |
+| test_coverage.sh      | 14         | 55         | 51      | 4      | 93%       |
+| test_regression.sh    | 7          | 10         | 5       | 5      | 50%*      |
+| **TOTAL**             | **50**     | **179**    | **169** | **10** | **94%**   |
 
 \* Regression test failures are expected (testing known bugs)
 
