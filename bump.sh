@@ -251,7 +251,14 @@ function check_dependency {
 function path_as_name {
     local pan_path="$1"
     not_empty "path to convert to a name" "$pan_path"
-    echo "$pan_path" | sed -e 's:^/::' -e 's:/:-:g' -e 's/[[:space:]]/_/g'
+
+    # Use bash built-in string manipulation (safer than sed with special chars)
+    local result="$pan_path"
+    result="${result#/}"           # Remove leading slash
+    result="${result//\//-}"       # Replace / with -
+    result="${result//[[:space:]]/_}"  # Replace spaces with _
+
+    echo "$result"
     return 0
 }
 
