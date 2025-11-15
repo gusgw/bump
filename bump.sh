@@ -395,12 +395,24 @@ function load_report {
     local lr_label="$1"
     local lr_load_file="$2"
     local rc
-    
+
+    # Validate log file directory before attempting to write
+    local log_dir
+    log_dir=$(dirname "${lr_load_file}")
+    if [[ ! -d "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir does not exist" >&2
+        return $FILING_ERROR
+    fi
+    if [[ ! -w "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir is not writable" >&2
+        return $SECURITY_FAILURE
+    fi
+
     if [[ ! -f /proc/loadavg ]]; then
         echo "${STAMP}: /proc/loadavg not available" >&2
         return 1
     fi
-    
+
     echo "${lr_label} $(date -Ins) $(awk '{print $1" "$2" "$3}' /proc/loadavg)" >> "${lr_load_file}"
     rc=$?
     if [[ $rc -ne 0 ]]; then
@@ -425,25 +437,37 @@ function memory_report {
     local mr_pid="$2"
     local mr_memory_file="$3"
     local mr_VmHWM mr_VmRSS rc
-    
+
+    # Validate log file directory before attempting to write
+    local log_dir
+    log_dir=$(dirname "${mr_memory_file}")
+    if [[ ! -d "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir does not exist" >&2
+        return $FILING_ERROR
+    fi
+    if [[ ! -w "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir is not writable" >&2
+        return $SECURITY_FAILURE
+    fi
+
     if [[ ! -f "/proc/${mr_pid}/status" ]]; then
         return 1 # process not found
     fi
-    
+
     mr_VmHWM=$(grep VmHWM "/proc/${mr_pid}/status" | awk '{print $2}')
     rc=$?
     if [[ $rc -ne 0 ]]; then
         report $rc "finding VmHWM"
         return $rc
     fi
-    
+
     mr_VmRSS=$(grep VmRSS "/proc/${mr_pid}/status" | awk '{print $2}')
     rc=$?
     if [[ $rc -ne 0 ]]; then
         report $rc "finding VmRSS"
         return $rc
     fi
-    
+
     echo "${mr_label} ${mr_pid} $(date -Ins) ${mr_VmHWM} ${mr_VmRSS}" >> "${mr_memory_file}"
     rc=$?
     if [[ $rc -ne 0 ]]; then
@@ -466,20 +490,32 @@ function free_memory_report {
     local fmr_label="$1"
     local fmr_file="$2"
     local fmr_total fmr_available fmr_swap_free rc
-    
+
+    # Validate log file directory before attempting to write
+    local log_dir
+    log_dir=$(dirname "${fmr_file}")
+    if [[ ! -d "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir does not exist" >&2
+        return $FILING_ERROR
+    fi
+    if [[ ! -w "$log_dir" ]]; then
+        echo "${STAMP}: log directory $log_dir is not writable" >&2
+        return $SECURITY_FAILURE
+    fi
+
     # Check if free command is available
     if ! command -v free >/dev/null 2>&1; then
         echo "${STAMP}: free command not available" >&2
         return 1
     fi
-    
+
     fmr_total=$(free -m | grep Mem | awk '{print $2}')
     rc=$?
     if [[ $rc -ne 0 ]]; then
         report $rc "finding total memory"
         return $rc
     fi
-    
+
     # Column 7 might not exist in all versions of free, use available or free+buffers/cache
     fmr_available=$(free -m | grep Mem | awk '{print ($7 != "") ? $7 : ($4 + $6)}')
     rc=$?
@@ -487,14 +523,14 @@ function free_memory_report {
         report $rc "finding available memory"
         return $rc
     fi
-    
+
     fmr_swap_free=$(free -m | grep Swap | awk '{print $4}')
     rc=$?
     if [[ $rc -ne 0 ]]; then
         report $rc "finding free swap space"
         return $rc
     fi
-    
+
     echo "${fmr_label} $(date -Ins) ${fmr_available} ${fmr_swap_free}" >> "${fmr_file}"
     rc=$?
     if [[ $rc -ne 0 ]]; then
