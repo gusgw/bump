@@ -104,10 +104,10 @@ function not_empty {
 #   $1 - Message to log
 # Returns: 0 on success
 function log_message {
-    local ls_message="$1"
+    local lm_message="$1"
     not_empty "date stamp" "${STAMP}"
-    not_empty "date stamp" "${ls_message}"
-    echo "${STAMP}: ${ls_message}" >&2
+    not_empty "message" "${lm_message}"
+    echo "${STAMP}: ${lm_message}" >&2
 }
 
 
