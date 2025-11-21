@@ -164,7 +164,7 @@ function kids {
     
     # Validate PID is numeric
     if ! [[ "$pid" =~ ^[0-9]+$ ]]; then
-        echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: invalid PID: $pid" >&2
+        echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: invalid PID: \"$pid\"" >&2
         return 1
     fi
     

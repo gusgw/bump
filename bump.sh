@@ -164,26 +164,30 @@ function check_md5 {
     local cm_file="$2"
     log_setting "required MD5" "$cm_md5"
     log_setting "file to check" "$cm_file"
-    
-    # Check if file exists using check_exists
-    check_exists "$cm_file"
-    
+
+    # Check if file exists (return error code instead of exiting for consistency)
+    if [[ ! -e "$cm_file" ]]; then
+        echo "${STAMP}: cannot find $cm_file" >&2
+        report $MISSING_FILE "checking file for MD5 verification"
+        return $MISSING_FILE
+    fi
+
     local md5 rc
     md5=$(md5sum "${cm_file}" | awk '{print $1}')
     rc=$?
-    
+
     if [[ $rc -ne 0 ]]; then
         report $rc "computing md5sum for $cm_file"
         return $rc
     fi
-    
+
     echo "$md5" >&2
-    
+
     if [[ "$md5" == "${cm_md5}" ]]; then
         echo "${STAMP}: $cm_file has correct md5" >&2
         return 0
     else
-        report $CORRUPT_DATA "checking $cm_file" "wrong md5"
+        report $CORRUPT_DATA "checking $cm_file, wrong md5"
         return $CORRUPT_DATA
     fi
 }
@@ -555,20 +559,22 @@ function poll_reports {
     local pr_pid_monitor="$1"
     local pr_pid_label="$2"
     local pr_wait="$3"
-    
+
     not_empty "PID to monitor in loop condition" "$pr_pid_monitor"
     not_empty "PID to use for labelling resource reports" "$pr_pid_label"
     not_empty "time between reports" "$pr_wait"
-    
+
     # Validate required global variables
     not_empty "job name" "${job}"
     not_empty "logs directory" "${logs}"
-    
+    not_empty "ramdisk directory" "${ramdisk}"
+
     while kill -0 "$pr_pid_monitor" 2>/dev/null; do
         sleep "${pr_wait}"
-        
+
         load_report "${job} run" "${logs}/${STAMP}.${job}.${pr_pid_label}.load"
-        
+
+        # Check workers file if it exists
         if [[ -f "$ramdisk/workers" ]]; then
             local pid
             while read -r pid; do
@@ -580,7 +586,7 @@ function poll_reports {
                 fi
             done < "$ramdisk/workers"
         fi
-        
+
         free_memory_report "${job} run" \
                            "${logs}/${STAMP}.${job}.${pr_pid_label}.free"
     done

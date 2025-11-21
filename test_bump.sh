@@ -389,41 +389,13 @@ assert_equals "$CORRUPT_DATA" "$?" "check_md5 returns CORRUPT_DATA for wrong che
 assert_contains "$output" "wrong md5" "check_md5 reports wrong checksum"
 
 # Test with non-existent file
-# The actual behavior is that check_md5 will:
-# 1. Call check_exists which will cleanup with MISSING_FILE
-# However, in the current implementation, if check_exists doesn't stop execution,
-# md5sum will fail and report will be called with CORRUPT_DATA
-cleanup_called=0
-cleanup_code=0
-eval "$(declare -f cleanup | sed '1s/.*/function original_cleanup/')"
-function cleanup {
-    cleanup_called=1
-    cleanup_code=$1
-    echo "Test cleanup intercepted with code $1" >&2
-    return 0
-}
-
-# Ensure STAMP is set for the test
+# The correct behavior (after BUG 11 fix) is that check_md5 returns error codes
+# instead of calling cleanup, for consistent error handling
 set_stamp
 
-# Now test - check_exists will be called which should cleanup with MISSING_FILE
-# However, since our test cleanup doesn't exit, execution continues and 
-# eventually cleanup is called again with CORRUPT_DATA
-last_cleanup_code=0
-function cleanup {
-    cleanup_called=1
-    last_cleanup_code=$1  # Track the last code used
-    cleanup_code=$1
-    echo "Test cleanup intercepted with code $1" >&2
-    # In real usage, cleanup would exit here, but for testing we just return
-    return 0
-}
-
 check_md5 "anymd5" "$TEST_DIR/nonexistent_md5_file" 2>&1
-assert_equals "1" "$cleanup_called" "check_md5 calls cleanup for missing file"
-# In the test environment, cleanup gets called multiple times since we don't exit
-# The last call will be with CORRUPT_DATA after md5sum fails
-assert_equals "$CORRUPT_DATA" "$last_cleanup_code" "check_md5 ultimately uses CORRUPT_DATA in test environment"
+rc=$?
+assert_equals "$MISSING_FILE" "$rc" "check_md5 returns MISSING_FILE for missing file"
 
 # Restore cleanup
 function cleanup {

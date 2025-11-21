@@ -362,11 +362,13 @@ output=$(
 ) || true
 
 # Check if it validated ramdisk
-if [[ "$output" == *"ramdisk"* ]] && [[ "$output" == *"not set"* || "$output" == *"empty"* ]]; then
+# not_empty outputs "cannot run without <description>"
+if [[ "$output" == *"ramdisk"* ]] && [[ "$output" == *"without"* || "$output" == *"missing"* ]]; then
     test_pass "poll_reports validates ramdisk variable"
 else
     test_fail "poll_reports should validate ramdisk before use"
     echo -e "${RED}  Should error on empty ramdisk variable${NC}"
+    echo -e "${RED}  Got output: $output${NC}"
 fi
 
 # Clean up
@@ -544,13 +546,13 @@ test_start "BUG 11: check_md5 inconsistent return code handling" "yes"
 output=$(cat /tmp/check_md5_test_output.txt)
 rc=$?
 
-# The subprocess should have exited (cleanup called), so we won't see "return_code=" in output
+# With the fix, check_md5 should return error code instead of exiting
 if echo "$output" | grep -q "return_code="; then
-    # We got a return code, which means the function returned instead of exiting
-    test_fail "check_md5 should have consistent error handling (return error code, not exit)"
+    # We got a return code, which means the function returned instead of exiting - this is correct!
+    test_pass "check_md5 returns error code for missing file (consistent behavior)"
 else
     # The subprocess exited before printing return_code, which is the bug
-    test_pass "BUG CONFIRMED: check_md5 exits on missing file instead of returning error code"
+    test_fail "check_md5 should return error code, not exit on missing file"
 fi
 
 # Clean up
@@ -575,13 +577,13 @@ wrong_md5="0000000000000000000000000000000"
 
 output=$(cat /tmp/check_md5_test_output2.txt)
 
-# The function also exits for MD5 mismatch (calls report with exit message)
+# With the fix, the function should return error code for MD5 mismatch too
 if echo "$output" | grep -q "return_code="; then
-    # Got a return code, which would be the correct behavior
-    test_fail "check_md5 should have consistent error handling (currently exits on mismatch too)"
+    # Got a return code, which is the correct behavior
+    test_pass "check_md5 returns error code for MD5 mismatch (consistent behavior)"
 else
     # The subprocess exited before printing return_code
-    test_pass "BUG CONFIRMED: check_md5 also exits on MD5 mismatch (same inconsistency)"
+    test_fail "check_md5 should return error code, not exit on MD5 mismatch"
 fi
 
 # Clean up
