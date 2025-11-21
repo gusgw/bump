@@ -7,3 +7,8 @@ CLAUDE.md
 .junie
 *.prompt
 
+# Coverage artifacts
+coverage/
+baseline_coverage.html
+test_baseline_results.txt
+
