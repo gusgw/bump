@@ -276,6 +276,75 @@ function process_file {
 find /data -name "*.txt" | parallel -j 4 process_file
 ```
 
+## Global Variables
+
+BUMP uses several global variables that control its behavior. Some must be set by your script, while others are set automatically by BUMP functions.
+
+### Required Variables
+
+These variables should be set by your script before using BUMP functions:
+
+- **STAMP**: Timestamp for the current session
+  - Format: `YYYYMMDDTHHMMSS-hostname`
+  - Set with: `set_stamp`
+  - Used by: All logging and monitoring functions
+  - Example: `20251121T183500-server01`
+
+### Optional Variables
+
+These variables customize BUMP behavior but have sensible defaults:
+
+- **WAIT**: Default wait time in seconds for retry operations
+  - Default: `5`
+  - Used by: Functions that implement retry logic
+  - Example: `WAIT=10`
+
+- **RULE**: Separator string for formatting output
+  - Default: `========================================`
+  - Used by: `print_rule()` function
+  - Example: `RULE="--------------------"`
+
+### Parallel Execution Variables
+
+When using `parallel.sh`, these variables are required:
+
+- **job**: Job name for logging
+  - Set by: Your script
+  - Used by: `poll_reports()` and monitoring functions
+  - Example: `export job="data_processing"`
+
+- **logs**: Directory for log files
+  - Set by: Your script
+  - Used by: All report functions
+  - Example: `export logs="/var/log/myapp"`
+
+- **ramdisk**: Directory for tracking worker processes
+  - Set by: Your script (when using `poll_reports`)
+  - Used by: `poll_reports()` to track parallel workers
+  - Example: `export ramdisk="/dev/shm/myapp"`
+
+### Internal Variables
+
+These variables are managed internally by BUMP and should not be modified:
+
+- **cleanup_functions**: Array of cleanup function names
+  - Managed by: `cleanup()` function
+  - Usage: `cleanup_functions+=("my_cleanup_function")`
+  - Called automatically on script exit
+
+- **MONTH**: Current year-month
+  - Format: `YYYYMM`
+  - Set with: `set_month`
+  - Example: `202511`
+
+### Parallel Job Variables
+
+When running inside GNU Parallel, these variables are automatically set:
+
+- **PARALLEL_PID**: Process ID of the parallel job
+- **PARALLEL_JOBSLOT**: Job slot number (1 to N)
+- **PARALLEL_SEQ**: Sequence number of the job
+
 ## API Reference
 
 ### Core Functions
@@ -552,18 +621,44 @@ cleanup 0
 1. **"cannot find return_codes.sh"**
    - Ensure bump directory is in the correct location relative to your script
    - Check that files have read permissions
+   - Verify the script_path variable points to the correct directory
 
-2. **Monitoring functions return errors**
+2. **"cannot run without [parameter]" errors**
+   - These come from `not_empty()` validation
+   - Check that you've provided all required parameters to the function
+   - For monitoring functions, ensure STAMP is set with `set_stamp`
+   - For parallel functions, ensure job, logs, and ramdisk are exported
+
+3. **"cleanup called with exit code: 60"**
+   - Exit code 60 means MISSING_INPUT - a required parameter was empty
+   - Check function calls to ensure all arguments are provided
+   - Verify that variables used as arguments are set before calling functions
+   - Common cause: forgetting to call `set_stamp` before logging functions
+
+4. **Monitoring functions return errors**
    - These functions require Linux procfs (/proc)
    - Some features may not work on macOS or other Unix systems
+   - The `kids()` function specifically requires /proc/PID/task/*/children
 
-3. **Signal handling not working**
+5. **Signal handling not working**
    - Ensure you've called `trap handle_signal SIGINT SIGTERM`
    - Some environments may block certain signals
+   - Check that cleanup_functions array is populated if cleanup isn't running
 
-4. **Parallel functions not found**
+6. **Parallel functions not found**
    - Make sure to export functions with `export -f function_name`
    - Source parallel.sh in addition to bump.sh
+   - Export required variables: `export STAMP job logs ramdisk`
+
+7. **Permission errors when writing log files**
+   - Ensure the logs directory exists and is writable
+   - Check that parent directory permissions allow file creation
+   - Report functions now validate directories before writing (after fixes)
+
+8. **"/workers" file created in root directory**
+   - This was BUG 6 - ensure you're using the fixed version
+   - Always set ramdisk variable before calling `poll_reports`
+   - The fix validates that ramdisk is not empty
 
 ### Debug Mode
 

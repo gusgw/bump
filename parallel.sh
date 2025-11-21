@@ -162,30 +162,33 @@ function kids {
     
     parallel_not_empty "pid to check for children" "$pid" || return $?
     
-    # Validate PID is numeric
+    # Validate PID is numeric to prevent injection attacks
     if ! [[ "$pid" =~ ^[0-9]+$ ]]; then
         echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: invalid PID: \"$pid\"" >&2
         return 1
     fi
-    
-    # Check if /proc is available
+
+    # Check if process exists via /proc filesystem
     if [[ ! -d "/proc/$pid" ]]; then
         return 0 # Process doesn't exist, no children
     fi
-    
+
+    # Traverse process tree: each process may have multiple threads (tasks)
+    # and each task can have children. We check all tasks to find all descendants.
     local t children kid
     for t in /proc/${pid}/task/*; do
         children="${t}/children"
         if [[ -e "$children" ]]; then
+            # Read child PIDs from the children file (one PID per line)
             while read -r kid; do
                 if [[ -n "$kid" ]]; then
-                    echo "$kid"
-                    kids "$kid"
+                    echo "$kid"            # Output this child PID
+                    kids "$kid"            # Recursively find its children
                 fi
             done < "$children"
         fi
     done
-    
+
     return 0
 }
 export -f kids

@@ -569,17 +569,22 @@ function poll_reports {
     not_empty "logs directory" "${logs}"
     not_empty "ramdisk directory" "${ramdisk}"
 
+    # Monitor loop: continues while the monitored process is running
+    # kill -0 checks if process exists without sending actual signal
     while kill -0 "$pr_pid_monitor" 2>/dev/null; do
         sleep "${pr_wait}"
 
+        # Log system load for the main job
         load_report "${job} run" "${logs}/${STAMP}.${job}.${pr_pid_label}.load"
 
-        # Check workers file if it exists
+        # Log memory usage for all worker processes (if tracking file exists)
+        # Workers file format: "PID description" (one per line)
         if [[ -f "$ramdisk/workers" ]]; then
             local pid
             while read -r pid; do
-                # Extract just the PID if line contains more data
+                # Extract PID from line (in case line has "PID description" format)
                 pid="${pid%% *}"
+                # Only log memory if worker process still exists
                 if kill -0 "${pid}" 2>/dev/null; then
                     memory_report "${job} run" "${pid}" \
                         "${logs}/${STAMP}.${job}.${pid}.memory"
@@ -587,6 +592,7 @@ function poll_reports {
             done < "$ramdisk/workers"
         fi
 
+        # Log free memory for the system
         free_memory_report "${job} run" \
                            "${logs}/${STAMP}.${job}.${pr_pid_label}.free"
     done
