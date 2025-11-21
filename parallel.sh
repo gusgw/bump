@@ -21,6 +21,8 @@
 # calling cleanup to avoid terminating the entire parallel session.
 # 
 # Usage: parallel_not_empty "description" "value"
+# Example:
+#   parallel_not_empty "username" "$USER"
 # Args:
 #   $1 - Description of the value being checked
 #   $2 - The value to check
@@ -43,6 +45,8 @@ export -f parallel_not_empty
 # in the output for better tracking of concurrent jobs.
 # 
 # Usage: parallel_log_setting "description" "value"
+# Example:
+#   parallel_log_setting "worker_id" "$PARALLEL_SEQ"
 # Args:
 #   $1 - Description of the setting
 #   $2 - The setting value
@@ -63,6 +67,8 @@ export -f parallel_log_setting
 # in the output for better tracking of concurrent jobs.
 # 
 # Usage: parallel_log_message "message to log"
+# Example:
+#   parallel_log_message "Worker started processing"
 # Args:
 #   $1 - Message to log
 # Returns: 0 on success, MISSING_INPUT if parameters are empty
@@ -81,6 +87,8 @@ export -f parallel_log_message
 # than calling cleanup, to avoid terminating the parallel session.
 # 
 # Usage: parallel_report return_code "description"
+# Example:
+#   parallel_report 1 "File processing failed"
 # Args:
 #   $1 - Return code
 #   $2 - Description of what failed
@@ -100,6 +108,8 @@ export -f parallel_report
 # of calling cleanup on failure.
 # 
 # Usage: parallel_check_exists "/path/to/file"
+# Example:
+#   parallel_check_exists "/tmp/input_data.txt"
 # Args:
 #   $1 - Path to check for existence
 # Returns: 0 if exists, MISSING_FILE if not
@@ -123,6 +133,9 @@ parallel_cleanup_function=""
 # exit. Can run a single cleanup function if registered.
 # 
 # Usage: parallel_cleanup exit_code
+# Example:
+#   parallel_cleanup_function="my_worker_cleanup"
+#   parallel_cleanup 0
 # Args:
 #   $1 - Exit code to return
 # Returns: The provided exit code (does not exit)
@@ -154,6 +167,9 @@ export -f parallel_cleanup
 # Returns one PID per line. Linux-specific (requires /proc).
 # 
 # Usage: kids parent_pid
+# Example:
+#   # Find all descendants of current shell
+#   kids $$
 # Args:
 #   $1 - Parent process ID
 # Returns: 0 on success, outputs child PIDs to stdout
@@ -200,6 +216,9 @@ export -f kids
 # Requires niceload command and optional OPT_NICELOAD global variable.
 # 
 # Usage: apply_niceload main_pid workers_file target_load
+# Example:
+#   # Limit load to 4.0, storing worker PIDs in /tmp/workers
+#   apply_niceload $$ "/tmp/workers" 4.0
 # Args:
 #   $1 - Main process ID to control
 #   $2 - File path to store controlled PIDs
@@ -221,9 +240,9 @@ function apply_niceload {
     fi
 
     # Validate OPT_NICELOAD to prevent command injection
-    # Only allow safe niceload options: alphanumeric, hyphens, equals, underscores
+    # Only allow safe niceload options: alphanumeric, hyphens, equals, underscores, spaces
     if [[ -n "${OPT_NICELOAD:-}" ]]; then
-        if ! [[ "${OPT_NICELOAD}" =~ ^[a-zA-Z0-9_=-]+$ ]]; then
+        if ! [[ "${OPT_NICELOAD}" =~ ^[a-zA-Z0-9_=\ -]+$ ]]; then
             echo "${STAMP} ${PARALLEL_PID} ${PARALLEL_JOBSLOT} ${PARALLEL_SEQ}: invalid OPT_NICELOAD value (contains unsafe characters)" >&2
             return 1
         fi

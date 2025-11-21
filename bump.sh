@@ -1,10 +1,20 @@
 #!/bin/bash
 ##  Utility functions
+#   
+#   This library provides common utility functions for bash scripts, including
+#   logging, error handling, file verification, and resource monitoring.
+#
+#   Usage:
+#     source bump.sh
+#     set_stamp
+#     log_message "Starting script..."
 
 ##  Settings
 #   STAMP   should be set by a call to set_stamp in this file.
 #   WAIT    is the time to wait in seconds between repeated attempts.
 #   RULE    is a separator to use in formatting outputs.
+
+VERSION="2.0.0"
 
 ##  Notes
 #   Run set_stamp and set_month before using the other routines.
@@ -53,12 +63,21 @@ RULE=${RULE:-"========================================"}
 # The timestamp is exported as the global variable STAMP
 # 
 # Usage: set_stamp
+# Example:
+#   set_stamp
+#   echo $STAMP  # Output: 20231114T120000-myhost
 # Returns: 0 on success
 function set_stamp {
     # Use hostname command as fallback if hostnamectl is not available
-    local hostname
-    hostname=$(hostname)
-    export STAMP="$(date '+%Y%m%dT%H%M%S')-${hostname}"
+    local ss_hostname
+    if command -v hostname >/dev/null 2>&1; then
+        ss_hostname=$(hostname)
+    elif [ -f /etc/hostname ]; then
+        ss_hostname=$(cat /etc/hostname)
+    else
+        ss_hostname="${HOSTNAME:-unknown}"
+    fi
+    export STAMP="$(date '+%Y%m%dT%H%M%S')-${ss_hostname}"
     return 0
 }
 
@@ -68,6 +87,9 @@ function set_stamp {
 # The month is exported as the global variable MONTH
 # 
 # Usage: set_month
+# Example:
+#   set_month
+#   echo $MONTH  # Output: 202311
 # Returns: 0 on success
 function set_month {
     export MONTH="$(date '+%Y%m')"
@@ -80,6 +102,8 @@ function set_month {
 # message and calls cleanup with MISSING_INPUT exit code.
 # 
 # Usage: not_empty "description" "value"
+# Example:
+#   not_empty "username" "$USER"
 # Args:
 #   $1 - Description of the value being checked
 #   $2 - The value to check
@@ -100,13 +124,15 @@ function not_empty {
 # Validates that both STAMP and the message are non-empty before logging.
 # 
 # Usage: log_message "message to log"
+# Example:
+#   log_message "Backup started successfully"
 # Args:
 #   $1 - Message to log
 # Returns: 0 on success
 function log_message {
     local lm_message="$1"
-    not_empty "date stamp" "${STAMP}"
     not_empty "message" "${lm_message}"
+    not_empty "date stamp" "${STAMP}"
     echo "${STAMP}: ${lm_message}" >&2
 }
 
@@ -117,6 +143,8 @@ function log_message {
 # the setting description and value to stderr.
 # 
 # Usage: log_setting "description" "value"
+# Example:
+#   log_setting "backup directory" "/var/backups"
 # Args:
 #   $1 - Description of the setting
 #   $2 - The setting value
@@ -136,6 +164,8 @@ function log_setting {
 # and calls cleanup with MISSING_FILE exit code.
 # 
 # Usage: check_exists "/path/to/file"
+# Example:
+#   check_exists "/etc/passwd"
 # Args:
 #   $1 - Path to check for existence
 # Returns: 0 if exists, calls cleanup with MISSING_FILE if not
@@ -155,6 +185,8 @@ function check_exists {
 # to the expected value. Reports success or failure.
 # 
 # Usage: check_md5 "expected_md5" "/path/to/file"
+# Example:
+#   check_md5 "d41d8cd98f00b204e9800998ecf8427e" "/tmp/empty_file"
 # Args:
 #   $1 - Expected MD5 checksum
 #   $2 - Path to file to check
@@ -167,23 +199,22 @@ function check_md5 {
 
     # Check if file exists (return error code instead of exiting for consistency)
     if [[ ! -e "$cm_file" ]]; then
-        echo "${STAMP}: cannot find $cm_file" >&2
-        report $MISSING_FILE "checking file for MD5 verification"
+        report $MISSING_FILE "cannot find $cm_file"
         return $MISSING_FILE
     fi
 
-    local md5 rc
-    md5=$(md5sum "${cm_file}" | awk '{print $1}')
-    rc=$?
+    local cm_actual_md5 cm_rc
+    cm_actual_md5=$(md5sum "${cm_file}" | awk '{print $1}')
+    cm_rc=$?
 
-    if [[ $rc -ne 0 ]]; then
-        report $rc "computing md5sum for $cm_file"
-        return $rc
+    if [[ $cm_rc -ne 0 ]]; then
+        report $cm_rc "computing md5sum for $cm_file"
+        return $cm_rc
     fi
 
-    echo "$md5" >&2
+    echo "$cm_actual_md5" >&2
 
-    if [[ "$md5" == "${cm_md5}" ]]; then
+    if [[ "$cm_actual_md5" == "${cm_md5}" ]]; then
         echo "${STAMP}: $cm_file has correct md5" >&2
         return 0
     else
@@ -198,6 +229,8 @@ function check_md5 {
 # (not as a regex pattern). Calls cleanup with appropriate exit code on failure.
 #
 # Usage: check_contains "/path/to/file" "search_string"
+# Example:
+#   check_contains "/var/log/syslog" "error"
 # Args:
 #   $1 - Path to file to check
 #   $2 - Literal string to search for in the file
@@ -211,12 +244,10 @@ function check_contains {
 
     if [[ -e "$cc_file_name" ]]; then
         if ! grep -qsF "${cc_string}" "${cc_file_name}"; then
-            echo "${STAMP}: ${cc_file_name} does not contain ${cc_string}" >&2
-            cleanup "$BAD_CONFIGURATION"
+            report "$BAD_CONFIGURATION" "${cc_file_name} does not contain ${cc_string}" "exiting cleanly"
         fi
     else
-        echo "${STAMP}: cannot find ${cc_file_name}" >&2
-        cleanup "$MISSING_FILE"
+        report "$MISSING_FILE" "cannot find ${cc_file_name}" "exiting cleanly"
     fi
     return 0
 }
@@ -227,6 +258,8 @@ function check_contains {
 # Calls report with MISSING_CMD exit code if not found.
 # 
 # Usage: check_dependency "command_name"
+# Example:
+#   check_dependency "rsync"
 # Args:
 #   $1 - Name of the command to check
 # Returns: 0 if command exists, calls report with MISSING_CMD if not
@@ -237,6 +270,7 @@ function check_dependency {
         report ${MISSING_CMD} \
                "looking for ${cd_cmd}" \
                "exiting cleanly"
+        return ${MISSING_CMD}
     fi
     return 0
 }
@@ -249,6 +283,8 @@ function check_dependency {
 # - Replacing spaces with underscores
 # 
 # Usage: name=$(path_as_name "/path/to/file")
+# Example:
+#   path_as_name "/var/log/syslog" # Output: var-log-syslog
 # Args:
 #   $1 - Path to convert
 # Returns: 0 on success, outputs converted name to stdout
@@ -257,26 +293,30 @@ function path_as_name {
     not_empty "path to convert to a name" "$pan_path"
 
     # Use bash built-in string manipulation (safer than sed with special chars)
-    local result="$pan_path"
-    result="${result#/}"           # Remove leading slash
-    result="${result//\//-}"       # Replace / with -
-    result="${result//[[:space:]]/_}"  # Replace spaces with _
+    local pan_result="$pan_path"
+    pan_result="${pan_result#/}"           # Remove leading slash
+    pan_result="${pan_result//\//-}"       # Replace / with -
+    pan_result="${pan_result//[[:space:]]/_}"  # Replace spaces with _
 
-    echo "$result"
+    echo "$pan_result"
     return 0
 }
 
 # report: Report an error with optional cleanup
 # 
-# Reports a non-zero return code with description. If exit_message is
-# provided, calls cleanup to exit. Otherwise continues execution.
+# Reports a non-zero return code with description. 
+# - If exit_message ($3) IS provided: Logs error, calls cleanup, and EXITS the script.
+# - If exit_message ($3) is NOT provided: Logs error and CONTINUES execution.
 # 
-# Usage: report 1 "operation failed" ["exit message"]
+# Usage: 
+#   report 1 "operation failed"                 # Log and continue
+#   report 1 "critical failure" "exiting now"   # Log and exit
+#
 # Args:
 #   $1 - Return code
 #   $2 - Description of what failed
-#   $3 - (Optional) Exit message - if provided, cleanup is called
-# Returns: The provided return code
+#   $3 - (Optional) Exit message - causes script termination
+# Returns: The provided return code (if not exiting)
 function report {
     local r_rc="$1"
     local r_description="$2"
@@ -298,16 +338,19 @@ function report {
 # Uses global WAIT variable for sleep interval (default 5 seconds).
 # 
 # Usage: slow "process_name"
+# Example:
+#   slow "rsync"
 # Args:
 #   $1 - Name of the process to wait for
 # Returns: 0 when all matching processes have terminated
 function slow {
     local s_pname="$1"
     log_setting "program name to wait for" "$s_pname"
-    local pid
-    for pid in $(pgrep "$s_pname"); do
-        while kill -0 "$pid" 2>/dev/null; do
-            echo "${STAMP}: ${s_pname} ${pid} is still running" >&2
+    local s_pid
+    local s_pids=$(pgrep -x -u "$(id -u)" "$s_pname")
+    for s_pid in $s_pids; do
+        while kill -0 "$s_pid" 2>/dev/null; do
+            echo "${STAMP}: ${s_pname} ${s_pid} is still running" >&2
             sleep "${WAIT}"
         done
     done
@@ -320,6 +363,8 @@ function slow {
 # Default rule is a line of equals signs.
 # 
 # Usage: print_rule
+# Example:
+#   print_rule  # Outputs: ========================================
 # Returns: 0 on success
 function print_rule {
     echo "$RULE"
@@ -331,6 +376,8 @@ function print_rule {
 # Default rule is a line of equals signs.
 # 
 # Usage: print_error_rule
+# Example:
+#   print_error_rule >&2
 # Returns: 0 on success
 function print_error_rule {
     echo "$RULE" >&2
@@ -349,11 +396,26 @@ cleanup_functions=()
 #          infinite loop.
 # 
 # Usage: cleanup exit_code
+# Example:
+#   # Define cleanup function
+#   function cleanup_temp_files { rm -rf "$TEMP_DIR"; }
+#   cleanup_functions+=("cleanup_temp_files")
+#   
+#   # Call cleanup on error
+#   cleanup 1
 # Args:
 #   $1 - Exit code to use when exiting
 # Returns: Does not return - exits with provided code
 function cleanup {
     local c_rc="${1:-0}"
+
+    # Prevent recursion
+    if [[ -n "${CLEANUP_RUNNING:-}" ]]; then
+        echo "${STAMP}: cleanup already running, preventing recursion" >&2
+        return "$c_rc"
+    fi
+    export CLEANUP_RUNNING=1
+
     print_error_rule
     echo "${STAMP}: exiting cleanly with code ${c_rc}. . ." >&2
     
@@ -391,6 +453,8 @@ function handle_signal {
 # to the specified file. Uses /proc/loadavg on Linux systems.
 # 
 # Usage: load_report "label" "/path/to/load.log"
+# Example:
+#   load_report "backup_job" "/var/log/backup_load.log"
 # Args:
 #   $1 - Label to prefix the load data
 #   $2 - Path to file where load data should be appended
@@ -399,6 +463,9 @@ function load_report {
     local lr_label="$1"
     local lr_load_file="$2"
     local rc
+
+    not_empty "label" "$lr_label"
+    not_empty "load log file" "$lr_load_file"
 
     # Validate log file directory before attempting to write
     local log_dir
@@ -431,6 +498,8 @@ function load_report {
 # a specific process and appends to a log file.
 # 
 # Usage: memory_report "label" pid "/path/to/memory.log"
+# Example:
+#   memory_report "backup_job" $$ "/var/log/backup_memory.log"
 # Args:
 #   $1 - Label to prefix the memory data
 #   $2 - Process ID to monitor
@@ -441,6 +510,10 @@ function memory_report {
     local mr_pid="$2"
     local mr_memory_file="$3"
     local mr_VmHWM mr_VmRSS rc
+
+    not_empty "label" "$mr_label"
+    not_empty "pid" "$mr_pid"
+    not_empty "memory log file" "$mr_memory_file"
 
     # Validate log file directory before attempting to write
     local log_dir
@@ -486,6 +559,8 @@ function memory_report {
 # appends to a log file with timestamp.
 # 
 # Usage: free_memory_report "label" "/path/to/memory.log"
+# Example:
+#   free_memory_report "system_status" "/var/log/system_memory.log"
 # Args:
 #   $1 - Label to prefix the memory data
 #   $2 - Path to file where memory data should be appended
@@ -494,6 +569,9 @@ function free_memory_report {
     local fmr_label="$1"
     local fmr_file="$2"
     local fmr_total fmr_available fmr_swap_free rc
+
+    not_empty "label" "$fmr_label"
+    not_empty "memory log file" "$fmr_file"
 
     # Validate log file directory before attempting to write
     local log_dir
@@ -550,6 +628,11 @@ function free_memory_report {
 # Requires global variables: job, logs, ramdisk
 # 
 # Usage: poll_reports monitor_pid label_pid wait_seconds
+# Example:
+#   job="backup"; logs="/var/log"; ramdisk="/tmp"
+#   long_running_process &
+#   pid=$!
+#   poll_reports $pid "job_label" 60 &
 # Args:
 #   $1 - PID to monitor (loop continues while this process runs)
 #   $2 - PID or label to use in log filenames
@@ -580,14 +663,14 @@ function poll_reports {
         # Log memory usage for all worker processes (if tracking file exists)
         # Workers file format: "PID description" (one per line)
         if [[ -f "$ramdisk/workers" ]]; then
-            local pid
-            while read -r pid; do
+            local pr_pid
+            while read -r pr_pid; do
                 # Extract PID from line (in case line has "PID description" format)
-                pid="${pid%% *}"
+                pr_pid="${pr_pid%% *}"
                 # Only log memory if worker process still exists
-                if kill -0 "${pid}" 2>/dev/null; then
-                    memory_report "${job} run" "${pid}" \
-                        "${logs}/${STAMP}.${job}.${pid}.memory"
+                if kill -0 "${pr_pid}" 2>/dev/null; then
+                    memory_report "${job} run" "${pr_pid}" \
+                        "${logs}/${STAMP}.${job}.${pr_pid}.memory"
                 fi
             done < "$ramdisk/workers"
         fi
