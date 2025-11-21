@@ -653,7 +653,8 @@ actual_md5=$(md5sum "$checksum_test" | awk '{print $1}')
 function cleanup { echo "Test cleanup intercepted with code $1" >&2; return "$1"; }
 
 # Test with wrong checksum format (too short)
-output=$(check_md5 "$checksum_test" "abc123" 2>&1)
+# Note: check_md5 signature is check_md5 "expected_md5" "file"
+output=$(check_md5 "abc123" "$checksum_test" 2>&1)
 rc=$?
 if [[ $rc -ne 0 ]]; then
     test_pass "check_md5 rejects invalid checksum format"
@@ -663,7 +664,7 @@ fi
 
 # Test with wrong checksum (correct format, wrong value)
 wrong_md5="ffffffffffffffffffffffffffffffff"
-output=$(check_md5 "$checksum_test" "$wrong_md5" 2>&1)
+output=$(check_md5 "$wrong_md5" "$checksum_test" 2>&1)
 rc=$?
 if [[ $rc -ne 0 ]]; then
     test_pass "check_md5 detects checksum mismatch"

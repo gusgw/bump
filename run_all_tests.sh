@@ -40,19 +40,15 @@ echo ""
 declare -a TEST_RESULTS
 
 # Function to run a test suite
-run_test_suite() {
+function run_test_suite() {
     local test_file="$1"
     local test_name="$2"
-    local expect_failures="${3:-no}"  # "yes" for regression tests
 
     TOTAL_SUITES=$((TOTAL_SUITES + 1))
 
     echo -e "${BOLD}========================================${NC}"
     echo -e "${BOLD}Running: $test_name${NC}"
     echo -e "${BOLD}File: $test_file${NC}"
-    if [[ "$expect_failures" == "yes" ]]; then
-        echo -e "${BLUE}(Failures expected - testing known bugs)${NC}"
-    fi
     echo -e "${BOLD}========================================${NC}"
 
     local output
@@ -79,22 +75,11 @@ run_test_suite() {
         fi
     else
         FAILED_SUITES=$((FAILED_SUITES + 1))
-        if [[ "$expect_failures" == "yes" ]]; then
-            echo -e "${YELLOW}⚠ SUITE FAILED (EXPECTED)${NC}: $test_name"
-            TEST_RESULTS+=("${YELLOW}⚠ FAIL (EXPECTED)${NC}: $test_name")
-        else
-            echo -e "${RED}✗ SUITE FAILED${NC}: $test_name"
-            TEST_RESULTS+=("${RED}✗ FAIL${NC}: $test_name")
-        fi
-
-        if [[ $VERBOSE -eq 0 ]]; then
-            # Show error details in quiet mode
-            echo "$output" | tail -20
-        fi
+        echo -e "${RED}✗ SUITE FAILED${NC}: $test_name"
+        TEST_RESULTS+=("${RED}✗ FAIL${NC}: $test_name")
     fi
-
-    echo ""
 }
+
 
 # Check if test files exist
 if [[ ! -f "test_bump.sh" ]]; then
@@ -130,13 +115,13 @@ if [[ -f "test_coverage.sh" ]]; then
     run_test_suite "test_coverage.sh" "Additional Coverage Tests"
 fi
 
-# Run regression tests (expected to fail before bug fixes)
+# Run regression tests
 echo ""
-echo -e "${BOLD}=== Phase 3: Regression Tests (Expected to Fail) ===${NC}"
+echo -e "${BOLD}=== Phase 3: Regression Tests ===${NC}"
 echo ""
 
 if [[ -f "test_regression.sh" ]]; then
-    run_test_suite "test_regression.sh" "Bug Regression Tests" "yes"
+    run_test_suite "test_regression.sh" "Bug Regression Tests"
 fi
 
 # Print overall summary
@@ -159,26 +144,9 @@ done
 echo ""
 
 # Determine exit code
-# We don't fail on regression test failures (they're expected)
-# But we do fail if working tests fail
 if [[ $FAILED_SUITES -gt 0 ]]; then
-    # Check if only regression tests failed
-    regression_only=1
-    for result in "${TEST_RESULTS[@]}"; do
-        if [[ "$result" == *"FAIL"* ]] && [[ "$result" != *"EXPECTED"* ]] && [[ "$result" != *"Regression"* ]]; then
-            regression_only=0
-            break
-        fi
-    done
-
-    if [[ $regression_only -eq 1 ]]; then
-        echo -e "${YELLOW}Only regression tests failed (expected before bug fixes)${NC}"
-        echo -e "${GREEN}All working code tests passed!${NC}"
-        exit 0
-    else
-        echo -e "${RED}Some working code tests failed - this needs attention!${NC}"
-        exit 1
-    fi
+    echo -e "${RED}Some test suites failed - this needs attention!${NC}"
+    exit 1
 else
     echo -e "${GREEN}All test suites passed!${NC}"
     exit 0

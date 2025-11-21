@@ -1,13 +1,7 @@
 #!/bin/bash
 # test_regression.sh: Regression tests for identified bugs
 #
-# These tests reproduce bugs identified in the code review.
-# THESE TESTS SHOULD FAIL with current code and PASS after fixes are applied.
-#
-# Each test is marked with:
-# - BUG ID from CODE_REVIEW.md
-# - Expected behavior vs actual behavior
-# - How to fix
+# These tests verify fixes for previously identified issues.
 
 # Get the script path and source BUMP
 script_path=$(dirname "$(readlink -f "$0")")
@@ -19,7 +13,6 @@ script_path=$(dirname "$(readlink -f "$0")")
 TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
-TESTS_EXPECTED_TO_FAIL=0
 
 # Test result tracking
 TEST_RESULTS=""
@@ -34,12 +27,7 @@ NC='\033[0m' # No Color
 # Test framework functions
 function test_start {
     local test_name="$1"
-    local should_fail="${2:-no}"
     echo -e "\n${YELLOW}Testing: ${test_name}${NC}"
-    if [[ "$should_fail" == "yes" ]]; then
-        echo -e "${BLUE}[EXPECTED TO FAIL WITH CURRENT CODE]${NC}"
-        TESTS_EXPECTED_TO_FAIL=$((TESTS_EXPECTED_TO_FAIL + 1))
-    fi
     TESTS_RUN=$((TESTS_RUN + 1))
 }
 
@@ -110,7 +98,7 @@ function cleanup {
 
 # Test setup
 echo "=== BUMP Regression Test Suite ==="
-echo "=== Tests for identified bugs - EXPECTED TO FAIL before fixes ==="
+echo "=== Tests for identified bugs ==="
 
 # Create temporary test directory
 TEST_DIR=$(mktemp -d /tmp/bump_test_regression.XXXXXX)
@@ -124,11 +112,7 @@ set_stamp
 # Location: bump.sh:109
 # Issue: validates "date stamp" twice instead of "message"
 #############################################
-test_start "BUG 1: log_message parameter validation" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:109 validates 'date stamp' for message parameter${NC}"
-echo -e "${BLUE}CURRENT: not_empty \"date stamp\" \"\${ls_message}\"${NC}"
-echo -e "${BLUE}SHOULD BE: not_empty \"message\" \"\${lm_message}\"${NC}"
+test_start "BUG 1: log_message parameter validation"
 
 # This test checks if the error message correctly identifies missing "message"
 # With current bug, error says "cannot run without date stamp" (wrong)
@@ -146,11 +130,7 @@ fi
 # Location: bump.sh:209
 # Issue: grep without -F flag treats string as regex
 #############################################
-test_start "BUG 2: check_contains regex injection vulnerability" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:209 uses grep without -F flag${NC}"
-echo -e "${BLUE}CURRENT: grep -qs \"\${cc_string}\" \"\${cc_file_name}\"${NC}"
-echo -e "${BLUE}SHOULD BE: grep -qsF \"\${cc_string}\" \"\${cc_file_name}\"${NC}"
+test_start "BUG 2: check_contains regex injection vulnerability"
 
 # Create test file
 test_file="$TEST_DIR/regex_test.txt"
@@ -195,10 +175,7 @@ fi
 # Location: bump.sh:254
 # Issue: sed can break with special characters
 #############################################
-test_start "BUG 3: path_as_name sed injection vulnerability" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:254 uses sed which can break with special chars${NC}"
-echo -e "${BLUE}SHOULD USE: bash built-in string manipulation${NC}"
+test_start "BUG 3: path_as_name sed injection vulnerability"
 
 # Test with sed delimiter in path (colon is used as sed delimiter)
 # This might cause sed to fail or produce unexpected output
@@ -237,11 +214,7 @@ fi
 # Location: parallel.sh:230
 # Issue: ${OPT_NICELOAD:-} unquoted allows command injection
 #############################################
-test_start "BUG 4: apply_niceload command injection vulnerability" "yes"
-
-echo -e "${BLUE}BUG: parallel.sh:230 has unquoted variable expansion${NC}"
-echo -e "${BLUE}CURRENT: niceload ... \${OPT_NICELOAD:-} -p ...${NC}"
-echo -e "${BLUE}SHOULD BE: quoted and validated${NC}"
+test_start "BUG 4: apply_niceload command injection vulnerability"
 
 if command -v niceload >/dev/null 2>&1; then
     # Set up test
@@ -286,11 +259,7 @@ fi
 # Location: bump.sh:477
 # Issue: assumes column 7 exists for available memory
 #############################################
-test_start "BUG 5: free_memory_report fragile column parsing" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:477 assumes column 7 exists${NC}"
-echo -e "${BLUE}CURRENT: awk '{print (\$7 != \"\") ? \$7 : (\$4 + \$6)}'${NC}"
-echo -e "${BLUE}ISSUE: Different free versions have different columns${NC}"
+test_start "BUG 5: free_memory_report fragile column parsing"
 
 if command -v free >/dev/null 2>&1; then
     # Check what columns free actually provides
@@ -330,11 +299,7 @@ fi
 # Location: bump.sh:529
 # Issue: $ramdisk used without validation
 #############################################
-test_start "BUG 6: poll_reports unvalidated ramdisk variable" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:529 uses \$ramdisk without validation${NC}"
-echo -e "${BLUE}CURRENT: if [[ -f \"\$ramdisk/workers\" ]]; then${NC}"
-echo -e "${BLUE}ISSUE: if ramdisk is empty, creates path '/workers'${NC}"
+test_start "BUG 6: poll_reports unvalidated ramdisk variable"
 
 # Set up required globals
 export job="test_job"
@@ -380,10 +345,7 @@ wait $test_pid 2>/dev/null || true
 # Location: bump.sh:344-363
 # Issue: No guard against re-entrance
 #############################################
-test_start "BUG 7: cleanup function recursion guard" "yes"
-
-echo -e "${BLUE}BUG: bump.sh:344 lacks re-entrance guard${NC}"
-echo -e "${BLUE}ISSUE: cleanup can call itself infinitely${NC}"
+test_start "BUG 7: cleanup function recursion guard"
 
 # Save original cleanup
 eval "$(declare -f cleanup | sed '1s/.*/function original_test_cleanup/')"
@@ -448,7 +410,7 @@ function cleanup {
 # Actual: Writes fail silently or create files in unexpected locations
 #############################################
 
-test_start "BUG 8: load_report unvalidated file write" "yes"
+test_start "BUG 8: load_report unvalidated file write"
 
 # Test 1: Writing to non-existent directory
 nonexistent_dir="/tmp/bump_test_nonexistent_$RANDOM"
@@ -476,16 +438,7 @@ else
     test_pass "Skipping unwritable path test (running as root)"
 fi
 
-#############################################
-# BUG 9: Unvalidated file write operations - memory_report
-# Location: bump.sh:440
-# Severity: Critical (C4)
-# Issue: memory_report doesn't validate file path before writing
-# Expected: Should validate directory exists and is writable
-# Actual: Writes fail silently or create files in unexpected locations
-#############################################
-
-test_start "BUG 9: memory_report unvalidated file write" "yes"
+test_start "BUG 9: memory_report unvalidated file write"
 
 # Test with non-existent directory
 nonexistent_dir="/tmp/bump_test_nonexistent_$RANDOM"
@@ -498,16 +451,7 @@ else
     test_fail "memory_report should fail for non-existent directory"
 fi
 
-#############################################
-# BUG 10: Unvalidated file write operations - free_memory_report
-# Location: bump.sh:491
-# Severity: Critical (C4)
-# Issue: free_memory_report doesn't validate file path before writing
-# Expected: Should validate directory exists and is writable
-# Actual: Writes fail silently or create files in unexpected locations
-#############################################
-
-test_start "BUG 10: free_memory_report unvalidated file write" "yes"
+test_start "BUG 10: free_memory_report unvalidated file write"
 
 # Test with non-existent directory
 nonexistent_dir="/tmp/bump_test_nonexistent_$RANDOM"
@@ -520,14 +464,7 @@ else
     test_fail "free_memory_report should fail for non-existent directory"
 fi
 
-#############################################
-# BUG 11: Inconsistent return code handling in check_md5
-# Location: bump.sh:162-188
-# Severity: High (H5)
-# Issue: check_md5 calls check_exists which exits script instead of returning error code
-# Impact: Inconsistent error handling - some errors return codes, file missing causes exit
-#############################################
-test_start "BUG 11: check_md5 inconsistent return code handling" "yes"
+test_start "BUG 11: check_md5 inconsistent return code handling"
 
 # The bug: check_md5 calls check_exists on line 169, which calls cleanup() and exits
 # This is inconsistent with how check_md5 handles other errors (md5sum failure, mismatch)
@@ -596,10 +533,7 @@ rm -f "$test_file" /tmp/check_md5_test_output2.txt
 # Issue: PID validation happens but error message uses unquoted $pid
 # Impact: Could have command injection or formatting issues in error messages
 #############################################
-test_start "BUG 12: kids function PID validation" "yes"
-
-# The bug: When PID is invalid, line 167 echoes $pid without quotes
-# This could allow command injection or cause formatting issues
+test_start "BUG 12: kids function PID validation"
 
 # Test 1: Non-numeric PID with special characters
 output=$(kids "12\$(date)" 2>&1)
@@ -642,28 +576,66 @@ else
 fi
 
 #############################################
+# BUG 13: slow function partial matching
+# Location: bump.sh:300
+# Issue: pgrep without -x matches substrings
+#############################################
+test_start "BUG 13: slow function partial matching"
+
+if command -v pgrep >/dev/null 2>&1; then
+    # Start a process with a known name
+    (sleep 3) &
+    pid=$!
+    
+    # Set short wait time for test
+    WAIT=0.1
+    
+    # Measure time taken by slow
+    start_time=$(date +%s%N) # Nanoseconds if available, else %s
+    
+    # Try to wait for a substring "lee" (should NOT match "sleep" if fixed)
+    slow "lee" 2>/dev/null
+    
+    end_time=$(date +%s%N)
+    
+    # Calculate duration in seconds (approximate)
+    # Handle different date implementations
+    if [[ ${#start_time} -gt 10 ]]; then
+        # Nanoseconds available
+        duration=$(( (end_time - start_time) / 1000000000 ))
+    else
+        duration=$((end_time - start_time))
+    fi
+    
+    if [[ $duration -lt 1 ]]; then
+        test_pass "slow did not wait for substring match (took < 1s)"
+    else
+        test_fail "slow waited for substring match (took $duration s)"
+        echo -e "${RED}  Mathed 'sleep' via 'lee' - Partial matching bug active${NC}"
+    fi
+    
+    # Clean up
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+else
+    echo -e "${YELLOW}⊘ SKIP${NC}: pgrep not available"
+fi
+
+#############################################
 # Test Summary
 #############################################
 echo -e "\n========================================="
 echo "Regression Test Summary"
 echo "========================================="
 echo "Total test cases run: $TESTS_RUN"
-echo "Tests expected to fail: $TESTS_EXPECTED_TO_FAIL"
 echo -e "${GREEN}Test assertions passed: $TESTS_PASSED${NC}"
 echo -e "${RED}Test assertions failed: $TESTS_FAILED${NC}"
 
-echo -e "\n${BLUE}NOTE: These tests reproduce known bugs.${NC}"
-echo -e "${BLUE}Failures indicate the bugs still exist (expected before fixes).${NC}"
-echo -e "${BLUE}After implementing fixes, all these tests should pass.${NC}"
-
-# For regression tests, we report pass/fail but don't exit with error
-# since failures are expected before fixes
 if [[ $TESTS_FAILED -eq 0 ]]; then
-    echo -e "\n${GREEN}All regression tests passed - bugs have been fixed!${NC}"
+    echo -e "\n${GREEN}All regression tests passed!${NC}"
     exit 0
 else
-    echo -e "\n${YELLOW}$TESTS_FAILED regression tests failed - bugs still present (expected before fixes)${NC}"
+    echo -e "\n${RED}$TESTS_FAILED regression tests failed!${NC}"
     echo -e "\nDetailed results:$TEST_RESULTS"
-    # Exit 0 because failures are expected
-    exit 0
+    exit 1
 fi

@@ -96,10 +96,13 @@ trap "rm -rf $TEST_DIR" EXIT
 #############################################
 test_start "slow function"
 
+# Create a unique process name to avoid waiting for system sleep processes
+cp "$(command -v sleep)" "$TEST_DIR/bump_test_sleep"
+process_name="bump_test_sleep"
+
 # Create a background process that will terminate after 2 seconds
-(sleep 2) &
+"$TEST_DIR/bump_test_sleep" 2 &
 test_pid=$!
-process_name="sleep"
 
 # Set WAIT to 1 second for faster testing
 WAIT=1
