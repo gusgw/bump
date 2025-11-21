@@ -1,0 +1,28 @@
+name: BUMP CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y parallel procps coreutils
+
+    - name: Run ShellCheck
+      run: |
+        sudo apt-get install -y shellcheck
+        shellcheck bump.sh parallel.sh
+      continue-on-error: true
+
+    - name: Run Test Suite
+      run: ./run_all_tests.sh
