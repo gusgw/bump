@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - 2025-11-21
+## [1.1.0] - 2025-11-21
 
 ### Fixed
 - **Critical**: Fixed `slow` function to use exact process name matching (`pgrep -x`) and restrict to current user (`-u`), preventing hangs on system processes or partial matches.
