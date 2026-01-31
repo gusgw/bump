@@ -48,7 +48,7 @@ function assert_equals {
     local expected="$1"
     local actual="$2"
     local message="$3"
-    
+
     if [[ "$expected" == "$actual" ]]; then
         test_pass "$message (expected: '$expected', got: '$actual')"
         return 0
@@ -62,7 +62,7 @@ function assert_contains {
     local haystack="$1"
     local needle="$2"
     local message="$3"
-    
+
     if [[ "$haystack" == *"$needle"* ]]; then
         test_pass "$message"
         return 0
@@ -75,7 +75,7 @@ function assert_contains {
 function assert_file_exists {
     local file="$1"
     local message="$2"
-    
+
     if [[ -f "$file" ]]; then
         test_pass "$message"
         return 0
@@ -89,7 +89,7 @@ function assert_exit_code {
     local expected="$1"
     local actual="$2"
     local message="$3"
-    
+
     if [[ "$expected" -eq "$actual" ]]; then
         test_pass "$message (exit code: $actual)"
         return 0
@@ -456,6 +456,55 @@ else
 fi
 
 assert_contains "$output" "trapped signal" "handle_signal reports signal"
+
+# Restore cleanup
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    return $c_rc
+}
+
+#############################################
+# Test 14: soft_not_empty
+#############################################
+test_start "soft_not_empty"
+
+# Restore cleanup to default test override (no exit)
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    cleanup_called=1
+    cleanup_code=$c_rc
+    return $c_rc
+}
+
+# Test with non-empty value (should return 0)
+soft_not_empty "test description" "non-empty value" 2>/dev/null
+assert_equals "0" "$?" "soft_not_empty returns 0 for non-empty value"
+
+# Test with empty value (should return MISSING_INPUT, NOT call cleanup)
+cleanup_called=0
+cleanup_code=0
+soft_not_empty "test description" "" 2>/dev/null
+assert_equals "$MISSING_INPUT" "$?" "soft_not_empty returns MISSING_INPUT (60) for empty value"
+assert_equals "0" "$cleanup_called" "soft_not_empty does NOT call cleanup"
+
+# Test error message goes to stderr
+error_output=$(soft_not_empty "important param" "" 2>&1 >/dev/null)
+assert_contains "$error_output" "cannot run without important param" "soft_not_empty logs error to stderr"
+
+# Test works in if/then pattern
+if soft_not_empty "optional" "has_value" 2>/dev/null; then
+    test_pass "soft_not_empty works in if/then (true case)"
+else
+    test_fail "soft_not_empty works in if/then (true case)"
+fi
+
+if soft_not_empty "optional" "" 2>/dev/null; then
+    test_fail "soft_not_empty works in if/then (false case)"
+else
+    test_pass "soft_not_empty works in if/then (false case)"
+fi
 
 # Restore cleanup
 function cleanup {
