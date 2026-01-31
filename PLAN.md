@@ -13,7 +13,7 @@
 4. [Phase 0: Improve Test Coverage](#phase-0-improve-test-coverage-goal-1)
 5. [Phase 1: Evaluate Parallel Functions](#phase-1-evaluate-parallel-functions-goal-2)
 6. [Phase 2: Add Regression Tests for ALL Bugs](#phase-2-add-regression-tests-for-all-bugs-goal-3)
-7. [Phase 3: Fix Bugs via TDD](#phase-3-fix-bugs-via-tdd-goal-4)
+7. [Phase 3: Fix Bugs via TDD](#phase-3-fix-bugs-via-tdd-goal-4) (3A: Critical, 3B: High, 3C: Medium/Low, 3D: Soft Check Functions)
 8. [Phase 4: Final Code Review](#phase-4-final-code-review-goal-5)
 9. [Success Criteria](#success-criteria)
 10. [Git Workflow & Procedures](#git-workflow--procedures)
@@ -44,7 +44,8 @@ In priority order:
 2. **Evaluate parallel functions** - determine if missing functions are actually needed with specific examples
 3. **Add regression tests** for ALL known bugs so tests fail until bugs are fixed
 4. **Fix bugs using TDD** based on regression tests
-5. **Conduct final review** to ensure no new problems were introduced
+5. **Add soft check functions** — non-fatal variants (`soft_not_empty`, `soft_check_exists`, `soft_check_dependency`, `soft_check_contains`) that return error codes instead of exiting
+6. **Conduct final review** to ensure no new problems were introduced
 
 ---
 
@@ -460,6 +461,12 @@ test_regression.sh currently tests 7 bugs:
 - [ ] No new bugs introduced
 - [ ] Function documentation updated
 
+**PROGRESS.md Update:**
+- [ ] Update PROGRESS.md with a detailed summary of this phase's work
+- [ ] Include: what was done, files changed, key decisions, test results
+- [ ] Description must be detailed enough to repeat the work using only PROGRESS.md
+- [ ] Report progress to the user and WAIT for permission before continuing
+
 ---
 
 ### Phase 3B: Fix High Priority Bugs
@@ -611,6 +618,12 @@ test_regression.sh currently tests 7 bugs:
 - [ ] Function documentation updated
 - [ ] Parallel functions implemented if needed
 
+**PROGRESS.md Update:**
+- [ ] Update PROGRESS.md with a detailed summary of this phase's work
+- [ ] Include: what was done, files changed, key decisions, test results
+- [ ] Description must be detailed enough to repeat the work using only PROGRESS.md
+- [ ] Report progress to the user and WAIT for permission before continuing
+
 ---
 
 ### Phase 3C: Fix Medium and Low Priority Issues
@@ -679,6 +692,180 @@ test_regression.sh currently tests 7 bugs:
 - All tests passing
 - Updated function documentation
 - List of manual review items for Phase 4
+
+**PROGRESS.md Update:**
+- [ ] Update PROGRESS.md with a detailed summary of this phase's work
+- [ ] Include: what was done, files changed, key decisions, test results
+- [ ] Description must be detailed enough to repeat the work using only PROGRESS.md
+- [ ] Report progress to the user and WAIT for permission before continuing
+
+---
+
+### Phase 3D: Add Soft Check Functions
+
+**Objective:** Add non-fatal variants of the four hard-check functions that return error codes instead of exiting, enabling use in `if ... then` conditional logic.
+
+**Testing Strategy:**
+- Write tests FIRST for each function (TDD)
+- Verify tests FAIL before implementation
+- Implement function, verify tests PASS
+- Run full test suite after each implementation
+
+**Design:** Each `soft_` function mirrors its hard counterpart but returns a non-zero
+code instead of calling cleanup(). Functions are placed in bump.sh immediately after
+their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
+
+- [ ] **3D.1: Write tests for soft_not_empty**
+  - Add tests to test_bump.sh alongside hard counterpart tests
+  - Test: returns 0 when value is non-empty
+  - Test: returns MISSING_INPUT (60) when value is empty
+  - Test: does NOT call cleanup (script continues after failure)
+  - Test: logs error message to stderr on failure
+  - Test: works in `if soft_not_empty ...; then` pattern
+  - **Verify:** Tests FAIL (function doesn't exist yet)
+  - **Commit:** "Add tests for soft_not_empty function"
+
+- [ ] **3D.2: Implement soft_not_empty**
+  - Add to bump.sh immediately after not_empty (after line ~119)
+  - Implementation:
+    ```bash
+    function soft_not_empty {
+        local sne_description="$1"
+        local sne_check="$2"
+        if [[ -z "$sne_check" ]]; then
+            echo "${STAMP}: cannot run without ${sne_description}" >&2
+            return ${MISSING_INPUT}
+        fi
+        return 0
+    }
+    ```
+  - **Verify:** Tests from 3D.1 now PASS
+  - **Verify:** Existing tests still pass
+  - **Commit:** "Implement soft_not_empty function"
+
+- [ ] **3D.3: Write tests for soft_check_exists**
+  - Test: returns 0 when file/directory exists
+  - Test: returns MISSING_FILE (61) when path does not exist
+  - Test: does NOT call cleanup (script continues)
+  - Test: logs error message to stderr on failure
+  - Test: works with files, directories, and symlinks
+  - **Verify:** Tests FAIL (function doesn't exist yet)
+  - **Commit:** "Add tests for soft_check_exists function"
+
+- [ ] **3D.4: Implement soft_check_exists**
+  - Add to bump.sh immediately after check_exists (after line ~180)
+  - Implementation:
+    ```bash
+    function soft_check_exists {
+        local sce_file_name="$1"
+        log_setting "file or directory name that must exist" "$sce_file_name"
+        if [[ ! -e "$sce_file_name" ]]; then
+            echo "${STAMP}: cannot find $sce_file_name" >&2
+            return ${MISSING_FILE}
+        fi
+        return 0
+    }
+    ```
+  - **Verify:** Tests from 3D.3 now PASS
+  - **Verify:** Existing tests still pass
+  - **Commit:** "Implement soft_check_exists function"
+
+- [ ] **3D.5: Write tests for soft_check_dependency**
+  - Test: returns 0 when command exists (e.g., "bash")
+  - Test: returns MISSING_CMD (65) when command not found
+  - Test: does NOT call cleanup (script continues)
+  - Test: logs error message to stderr on failure
+  - **Verify:** Tests FAIL (function doesn't exist yet)
+  - **Commit:** "Add tests for soft_check_dependency function"
+
+- [ ] **3D.6: Implement soft_check_dependency**
+  - Add to bump.sh immediately after check_dependency (after line ~276)
+  - Implementation:
+    ```bash
+    function soft_check_dependency {
+        local scd_cmd="$1"
+        log_setting "command to check for is" "${scd_cmd}"
+        if ! command -v "${scd_cmd}" >/dev/null 2>&1; then
+            echo "${STAMP}: looking for ${scd_cmd} but it is not available" >&2
+            return ${MISSING_CMD}
+        fi
+        return 0
+    }
+    ```
+  - **Verify:** Tests from 3D.5 now PASS
+  - **Verify:** Existing tests still pass
+  - **Commit:** "Implement soft_check_dependency function"
+
+- [ ] **3D.7: Write tests for soft_check_contains**
+  - Test: returns 0 when file contains the string
+  - Test: returns BAD_CONFIGURATION (70) when file exists but string not found
+  - Test: returns MISSING_FILE (61) when file does not exist
+  - Test: does NOT call cleanup (script continues)
+  - Test: handles literal strings (no regex interpretation)
+  - Test: uses soft_not_empty internally (not not_empty)
+  - **Verify:** Tests FAIL (function doesn't exist yet)
+  - **Commit:** "Add tests for soft_check_contains function"
+
+- [ ] **3D.8: Implement soft_check_contains**
+  - Add to bump.sh immediately after check_contains (after line ~253)
+  - Implementation:
+    ```bash
+    function soft_check_contains {
+        local scc_file_name="$1"
+        local scc_string="$2"
+        log_setting "file name to check" "$scc_file_name"
+        log_setting "string to check for" "$scc_string"
+        soft_not_empty "date stamp" "$STAMP" || return $?
+        if [[ -e "$scc_file_name" ]]; then
+            if ! grep -qsF "${scc_string}" "${scc_file_name}"; then
+                echo "${STAMP}: ${scc_file_name} does not contain ${scc_string}" >&2
+                return ${BAD_CONFIGURATION}
+            fi
+        else
+            echo "${STAMP}: cannot find ${scc_file_name}" >&2
+            return ${MISSING_FILE}
+        fi
+        return 0
+    }
+    ```
+  - **Verify:** Tests from 3D.7 now PASS
+  - **Verify:** Existing tests still pass
+  - **Commit:** "Implement soft_check_contains function"
+
+- [ ] **3D.9: Run full test suite and verify coverage**
+  - Run `./run_all_tests.sh`
+  - **Verify:** ALL tests pass (existing + new soft_ tests)
+  - **Verify:** Coverage still at 90%+
+  - **Verify:** No regressions in any test suite
+  - **Commit:** (no commit needed unless fixes required)
+
+- [ ] **3D.10: Update documentation**
+  - Add soft_ function documentation to bump.sh function headers
+  - Update CLAUDE.md Key Functions section to mention soft_ variants
+  - Document the pattern: hard = exits, soft = returns code
+  - **Verify:** Documentation is accurate
+  - **Commit:** "Document soft check functions"
+
+### ⏸️ STOP FOR REVIEW - Soft Check Functions Complete
+
+**Review Checklist:**
+- [ ] All 4 soft_ functions implemented and tested
+- [ ] All soft_ function tests passing
+- [ ] All existing tests still passing
+- [ ] No regressions introduced
+- [ ] Functions return correct error codes
+- [ ] Documentation updated
+
+**Deliverables:**
+- soft_not_empty, soft_check_exists, soft_check_dependency, soft_check_contains in bump.sh
+- Tests for all 4 functions
+- Updated documentation
+
+**PROGRESS.md Update:**
+- [ ] Update PROGRESS.md with a detailed summary of this phase's work
+- [ ] Include: what was done, files changed, key decisions, test results
+- [ ] Description must be detailed enough to repeat the work using only PROGRESS.md
+- [ ] Report progress to the user and WAIT for permission before continuing
 
 ---
 
@@ -803,6 +990,12 @@ test_regression.sh currently tests 7 bugs:
 - BUGS_DISCOVERED.md if any new bugs found
 - All tests passing
 
+**PROGRESS.md Update:**
+- [ ] Update PROGRESS.md with a detailed summary of this phase's work
+- [ ] Include: what was done, files changed, key decisions, test results
+- [ ] Description must be detailed enough to repeat the work using only PROGRESS.md
+- [ ] Report progress to the user and WAIT for permission before continuing
+
 ---
 
 ## Success Criteria
@@ -812,6 +1005,8 @@ test_regression.sh currently tests 7 bugs:
 - [ ] No new critical bugs introduced
 - [ ] Code follows consistent style
 - [ ] All functions well-documented
+- [ ] All 4 soft_ check functions implemented with tests
+- [ ] Soft functions return correct error codes without calling cleanup
 
 ### Testing
 - [ ] ALL regression tests passing (100%)
@@ -834,6 +1029,7 @@ test_regression.sh currently tests 7 bugs:
 ### Process
 - [ ] Test-driven development followed
 - [ ] Review checkpoints completed
+- [ ] PROGRESS.md updated at each checkpoint with repeatable detail
 - [ ] All commits signed with -s
 - [ ] No attribution to Claude in commits
 - [ ] Git history is clean and traceable
