@@ -1126,6 +1126,37 @@ If new bugs are discovered during work:
 
 ---
 
+## Future Work
+
+Items identified during development that are out of scope for this plan but
+worth considering for future improvement.
+
+### Feature Requests
+
+- **M2: Log levels.** Add DEBUG/INFO/WARN/ERROR severity levels to `log_message()` and related functions, with a mechanism to filter by verbosity. Would require changing the logging API.
+
+- **M3: Split report() into report() and fatal().** The current `report()` function either continues or exits depending on whether a third argument is provided. Splitting into two functions would make the API clearer, but would break backward compatibility.
+
+- **M4: Error context stack.** Add `BASH_SOURCE` and `BASH_LINENO` to error messages to provide call stack tracing for nested function calls. Would help debugging but adds complexity.
+
+- **M12: Integration tests.** Add end-to-end workflow tests that exercise complete scripts sourcing bump, rather than testing individual functions in isolation.
+
+- **L3: CHANGELOG.** Maintain a CHANGELOG.md tracking changes across releases. Currently PROGRESS.md serves a similar purpose for plan-driven work.
+
+### Code Quality Improvements
+
+- **M1: Standardize error reporting.** Audit all error output across bump.sh and parallel.sh to use a consistent pattern (currently a mix of direct `echo >&2`, `report()`, and `log_message()`).
+
+- **M6: Quoting style.** Standardize on double quotes for variable expansion and single quotes for literals throughout. Currently mixed but functional.
+
+### Testing Improvements
+
+- **Bashcov accuracy.** Bashcov undercounts coverage for sourced files and subprocess-based tests. Investigate alternatives (`kcov`, `shcov`) or find a configuration that gives accurate numbers.
+
+- **Bats migration.** Consider migrating from the custom test framework to [Bats](https://github.com/bats-core/bats-core) for better test isolation, TAP output, and industry-standard tooling.
+
+---
+
 ## Appendix A: Consolidated Bug Reference
 
 This section consolidates bugs from CODE_REVIEW.md, TEST_BASELINE.md, and ISSUES_SUMMARY.md.
