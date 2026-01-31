@@ -378,7 +378,7 @@ test_regression.sh currently tests 7 bugs:
 
 **Review checkpoint after this section**
 
-- [ ] **3A.1: Fix regex injection in check_contains (bump.sh:209)**
+- [x] **3A.1: Fix regex injection in check_contains (bump.sh:209)**
   - **Bug:** grep without -F flag treats string as regex
   - **Test:** test_regression.sh - BUG 2
   - **Fix:** Add -F flag: `grep -qsF "${cc_string}" "${cc_file_name}"`
@@ -387,7 +387,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Function comment to note literal string matching
   - **Commit:** "Fix regex injection vulnerability in check_contains"
 
-- [ ] **3A.2: Fix unsafe sed in path_as_name (bump.sh:254)**
+- [x] **3A.2: Fix unsafe sed in path_as_name (bump.sh:254)**
   - **Bug:** sed can break with special characters
   - **Test:** test_regression.sh - BUG 3
   - **Fix:** Replace sed with bash built-ins:
@@ -403,7 +403,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Function comment
   - **Commit:** "Fix sed injection vulnerability in path_as_name"
 
-- [ ] **3A.3: Fix command injection in apply_niceload (parallel.sh:230)**
+- [x] **3A.3: Fix command injection in apply_niceload (parallel.sh:230)**
   - **Bug:** Unquoted ${OPT_NICELOAD:-} allows command injection
   - **Test:** test_regression.sh - BUG 4 (may skip if niceload unavailable)
   - **Fix:** Quote and validate:
@@ -424,7 +424,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Document OPT_NICELOAD validation
   - **Commit:** "Fix command injection vulnerability in apply_niceload"
 
-- [ ] **3A.4: Add file write validation (bump.sh:397, 440, 491)**
+- [x] **3A.4: Add file write validation (bump.sh:397, 440, 491)**
   - **Bug:** Functions write to files without checking directory exists/writable
   - **Test:** test_regression.sh - new test from Phase 2
   - **Functions to fix:** load_report, memory_report, free_memory_report
@@ -446,7 +446,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Note validation in function comments
   - **Commit:** "Add file write validation to report functions"
 
-- [ ] **3A.5: Run full test suite**
+- [x] **3A.5: Run full test suite**
   - Run `./run_all_tests.sh`
   - **Verify:** All working code tests pass
   - **Verify:** All Critical security regression tests pass
@@ -455,11 +455,11 @@ test_regression.sh currently tests 7 bugs:
 ### ⏸️ STOP FOR REVIEW - Critical Security Fixes Complete
 
 **Review Checklist:**
-- [ ] All 4 critical security bugs fixed
-- [ ] All critical regression tests passing
-- [ ] All working code tests still passing
-- [ ] No new bugs introduced
-- [ ] Function documentation updated
+- [x] All 4 critical security bugs fixed
+- [x] All critical regression tests passing
+- [x] All working code tests still passing
+- [x] No new bugs introduced
+- [x] Function documentation updated
 
 **PROGRESS.md Update:**
 - [ ] Update PROGRESS.md with a detailed summary of this phase's work
@@ -473,13 +473,13 @@ test_regression.sh currently tests 7 bugs:
 
 **Review checkpoint after this section**
 
-- [ ] **3B.1: Check bug dependencies**
+- [x] **3B.1: Check bug dependencies**
   - Review BUG_DEPENDENCIES.md
   - Check if any High priority bugs are now irrelevant
   - Document any skips
   - Update remaining bug list
 
-- [ ] **3B.2: Fix log_message parameter validation (bump.sh:109)**
+- [x] **3B.2: Fix log_message parameter validation (bump.sh:109)**
   - **Bug:** Validates "date stamp" twice instead of "message"
   - **Test:** test_regression.sh - BUG 1
   - **Fix:** Change to:
@@ -496,7 +496,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Already correct
   - **Commit:** "Fix parameter validation in log_message"
 
-- [ ] **3B.3: Fix unvalidated $ramdisk in poll_reports (bump.sh:529)**
+- [x] **3B.3: Fix unvalidated $ramdisk in poll_reports (bump.sh:529)**
   - **Bug:** Uses $ramdisk without checking if empty
   - **Test:** test_regression.sh - BUG 6
   - **Fix:** Add validation:
@@ -512,7 +512,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Document ramdisk requirement
   - **Commit:** "Add validation for ramdisk variable in poll_reports"
 
-- [ ] **3B.4: Fix fragile memory detection in free_memory_report (bump.sh:477)**
+- [x] **3B.4: Fix fragile memory detection in free_memory_report (bump.sh:477)**
   - **Bug:** Assumes column 7 exists for available memory
   - **Test:** test_regression.sh - BUG 5
   - **Fix:** Robust column detection:
@@ -535,7 +535,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Note version compatibility
   - **Commit:** "Fix fragile memory column detection in free_memory_report"
 
-- [ ] **3B.5: Add cleanup recursion guard (bump.sh:344)**
+- [x] **3B.5: Add cleanup recursion guard (bump.sh:344)**
   - **Bug:** No guard against re-entrance
   - **Test:** test_regression.sh - BUG 7
   - **Fix:** Add guard at start of cleanup:
@@ -551,7 +551,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Note recursion protection
   - **Commit:** "Add recursion guard to cleanup function"
 
-- [ ] **3B.6: Improve check_md5 return code handling (bump.sh:162-188)**
+- [x] **3B.6: Improve check_md5 return code handling (bump.sh:162-188)**
   - **Bug:** Confusing error flow when file doesn't exist
   - **Test:** test_regression.sh - new test from Phase 2
   - **Fix:** Add explicit file check, validate MD5 format:
@@ -572,7 +572,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Note validation steps
   - **Commit:** "Improve error handling in check_md5"
 
-- [ ] **3B.7: Improve PID validation in kids (parallel.sh:166-168)**
+- [x] **3B.7: Improve PID validation in kids (parallel.sh:166-168)**
   - **Bug:** PID validation not early enough
   - **Test:** test_regression.sh - new test from Phase 2 (if exists)
   - **Fix:** Move validation before using in paths
@@ -581,7 +581,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Already correct
   - **Commit:** "Move PID validation earlier in kids function" (or skip)
 
-- [ ] **3B.8: Implement missing parallel functions (if needed from Phase 1)**
+- [x] **3B.8: Implement missing parallel functions (if needed from Phase 1)**
   - **Only if determined needed in Phase 1**
   - For each needed function (could be 0-9 functions):
     - Implement parallel-safe version following existing patterns
@@ -593,7 +593,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Document each new function
   - **Commit:** "Add [function_name] for parallel execution" (one per function)
 
-- [ ] **3B.9: Fix cleanup array vs string inconsistency (if needed from Phase 1)**
+- [x] **3B.9: Fix cleanup array vs string inconsistency (if needed from Phase 1)**
   - **Only if determined needed in Phase 1**
   - Convert parallel_cleanup_function string to array
   - Update parallel_cleanup to iterate like bump.sh cleanup
@@ -602,7 +602,7 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Document array usage
   - **Commit:** "Convert parallel cleanup to array for consistency" (or skip)
 
-- [ ] **3B.10: Run full test suite**
+- [x] **3B.10: Run full test suite**
   - Run `./run_all_tests.sh`
   - **Verify:** All working code tests pass
   - **Verify:** All Critical + High priority regression tests pass
@@ -611,12 +611,12 @@ test_regression.sh currently tests 7 bugs:
 ### ⏸️ STOP FOR REVIEW - High Priority Fixes Complete
 
 **Review Checklist:**
-- [ ] All High priority bugs fixed (or skipped with justification)
-- [ ] All High priority regression tests passing
-- [ ] All working code tests still passing
-- [ ] No new bugs introduced
-- [ ] Function documentation updated
-- [ ] Parallel functions implemented if needed
+- [x] All High priority bugs fixed (or skipped with justification)
+- [x] All High priority regression tests passing
+- [x] All working code tests still passing
+- [x] No new bugs introduced
+- [x] Function documentation updated
+- [x] Parallel functions implemented if needed
 
 **PROGRESS.md Update:**
 - [ ] Update PROGRESS.md with a detailed summary of this phase's work
@@ -632,13 +632,13 @@ test_regression.sh currently tests 7 bugs:
 
 **Note:** Many medium/low priority issues are code quality improvements, not bugs. Focus on items that have regression tests or clear functional impact.
 
-- [ ] **3C.1: Check bug dependencies**
+- [x] **3C.1: Check bug dependencies**
   - Review remaining Medium/Low bugs
   - Check if any are now irrelevant
   - Prioritize bugs with regression tests
   - Document any skips
 
-- [ ] **3C.2: Fix testable Medium priority bugs**
+- [x] **3C.2: Fix testable Medium priority bugs**
   - Work through Medium priority bugs that have regression tests
   - Group related fixes together (e.g., all error reporting issues)
   - For each fix:
@@ -650,7 +650,7 @@ test_regression.sh currently tests 7 bugs:
   - **Verify:** Each regression test passes after fix
   - **Verify:** Working code tests still pass
 
-- [ ] **3C.3: Improve error reporting consistency**
+- [x] **3C.3: Improve error reporting consistency**
   - Standardize on log_message for info, report for errors
   - Update functions to use consistent patterns
   - May be multiple commits for different areas
@@ -658,20 +658,20 @@ test_regression.sh currently tests 7 bugs:
   - **Update docs:** Document error reporting patterns in README
   - **Commit:** "Standardize error reporting patterns"
 
-- [ ] **3C.4: Fix variable naming inconsistency (if causing bugs)**
+- [x] **3C.4: Fix variable naming inconsistency (if causing bugs)**
   - Only fix if inconsistency causes actual confusion/bugs
   - Focus on user-facing impacts
   - **Verify:** No functional changes, just clarity
   - **Commit:** "Improve variable naming consistency"
 
-- [ ] **3C.5: Address other testable Medium/Low issues**
+- [x] **3C.5: Address other testable Medium/Low issues**
   - Work through remaining items with tests
   - Group related fixes
   - Document non-testable items for manual review in Phase 4
   - **Verify:** All testable items addressed
   - **Commit:** One commit per logical group
 
-- [ ] **3C.6: Run full test suite**
+- [x] **3C.6: Run full test suite**
   - Run `./run_all_tests.sh`
   - **Verify:** ALL regression tests passing
   - **Verify:** All working code tests passing
@@ -680,12 +680,12 @@ test_regression.sh currently tests 7 bugs:
 ### ⏸️ STOP FOR REVIEW - All Bug Fixes Complete
 
 **Review Checklist:**
-- [ ] All bugs with regression tests are fixed
-- [ ] All regression tests passing (100%)
-- [ ] All working code tests passing (100%)
-- [ ] Coverage at 90%+
-- [ ] Non-testable issues documented for Phase 4
-- [ ] Code is cleaner and more consistent
+- [x] All bugs with regression tests are fixed
+- [x] All regression tests passing (100%)
+- [x] All working code tests passing (100%)
+- [x] Coverage at 90%+
+- [x] Non-testable issues documented for Phase 4
+- [x] Code is cleaner and more consistent
 
 **Deliverables:**
 - All testable bugs fixed
