@@ -51,16 +51,16 @@ function run_test_suite() {
     echo -e "${BOLD}File: $test_file${NC}"
     echo -e "${BOLD}========================================${NC}"
 
-    local output
     local exit_code
+    local tmpfile
 
     if [[ $VERBOSE -eq 1 ]]; then
-        # Verbose mode - show all output
         "./$test_file"
         exit_code=$?
     else
-        # Quiet mode - capture output, show summary only
-        output=$("./$test_file" 2>&1)
+        # Quiet mode - capture output to temp file
+        tmpfile=$(mktemp)
+        "./$test_file" > "$tmpfile" 2>&1
         exit_code=$?
     fi
 
@@ -71,13 +71,16 @@ function run_test_suite() {
 
         if [[ $VERBOSE -eq 0 ]]; then
             # Show summary in quiet mode
-            echo "$output" | grep -E "(Test (Summary|assertions)|All .* passed)" || true
+            grep -E "(Test (Summary|assertions)|All .* passed)" "$tmpfile" || true
         fi
     else
         FAILED_SUITES=$((FAILED_SUITES + 1))
         echo -e "${RED}✗ SUITE FAILED${NC}: $test_name"
         TEST_RESULTS+=("${RED}✗ FAIL${NC}: $test_name")
     fi
+
+    # Clean up temp file
+    [[ -n "${tmpfile:-}" ]] && rm -f "$tmpfile"
 }
 
 
