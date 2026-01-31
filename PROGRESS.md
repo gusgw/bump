@@ -126,3 +126,137 @@ Six high priority bugs were fixed, four were resolved as not-bugs:
 
 - `ceffd26` Improve code documentation and readability (Phase 4)
 - `d68bf8c` Fix critical bugs, harden security, and refactor codebase
+
+---
+
+## Phase 3D: Add Soft Check Functions
+
+**Status:** Complete
+
+**Date completed:** 2026-01-31
+
+### What was done
+
+Four non-fatal ("soft") variants of existing hard-check functions were implemented
+using strict TDD: tests written first, verified to fail, then function implemented,
+verified to pass. Each soft function returns an error code instead of calling
+`cleanup()`, enabling use in `if/then` conditional logic.
+
+#### 1. soft_not_empty (bump.sh, after not_empty, line ~130)
+
+```bash
+function soft_not_empty {
+    local sne_description="$1"
+    local sne_check="$2"
+    if [[ -z "$sne_check" ]]; then
+        echo "${STAMP}: cannot run without ${sne_description}" >&2
+        return ${MISSING_INPUT}
+    fi
+    return 0
+}
+```
+
+- Returns `MISSING_INPUT` (60) when value is empty
+- No `log_setting` calls (matching `not_empty` which also has none)
+- Tests: 6 assertions in test_bump.sh Test 14
+
+#### 2. soft_check_exists (bump.sh, after check_exists, line ~208)
+
+```bash
+function soft_check_exists {
+    local sce_file_name="$1"
+    log_setting "file or directory name that must exist" "$sce_file_name"
+    if [[ ! -e "$sce_file_name" ]]; then
+        echo "${STAMP}: cannot find $sce_file_name" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+```
+
+- Returns `MISSING_FILE` (61) when path does not exist
+- Includes `log_setting` call (matching hard version)
+- Tests: 6 assertions in test_bump.sh Test 15
+
+#### 3. soft_check_dependency (bump.sh, after check_dependency, line ~341)
+
+```bash
+function soft_check_dependency {
+    local scd_cmd="$1"
+    log_setting "command to check for is" "${scd_cmd}"
+    if ! command -v "${scd_cmd}" >/dev/null 2>&1; then
+        echo "${STAMP}: looking for ${scd_cmd} but it is not available" >&2
+        return ${MISSING_CMD}
+    fi
+    return 0
+}
+```
+
+- Returns `MISSING_CMD` (65) when command not in PATH
+- Includes `log_setting` call (matching hard version)
+- Tests: 4 assertions in test_bump.sh Test 16
+
+#### 4. soft_check_contains (bump.sh, after check_contains, line ~307)
+
+```bash
+function soft_check_contains {
+    local scc_file_name="$1"
+    local scc_string="$2"
+    soft_not_empty "date stamp" "$STAMP" || return $?
+    log_setting "file name to check" "$scc_file_name"
+    log_setting "string to check for" "$scc_string"
+    if [[ -e "$scc_file_name" ]]; then
+        if ! grep -qsF "${scc_string}" "${scc_file_name}"; then
+            echo "${STAMP}: ${scc_file_name} does not contain ${scc_string}" >&2
+            return ${BAD_CONFIGURATION}
+        fi
+    else
+        echo "${STAMP}: cannot find ${scc_file_name}" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+```
+
+- Returns `BAD_CONFIGURATION` (70) when string not found, `MISSING_FILE` (61) when file missing
+- Uses `soft_not_empty` (not `not_empty`) to check STAMP, avoiding accidental cleanup
+- Key design decision: `soft_not_empty` check placed BEFORE `log_setting` calls because
+  `log_setting` internally calls `not_empty` (hard version) which would trigger cleanup
+  when STAMP is empty. This ordering ensures the soft check catches the empty STAMP first.
+- Tests: 10 assertions in test_bump.sh Test 17
+
+### Files changed
+
+| File | Changes |
+|---|---|
+| `bump.sh` | Added 4 soft_ functions with full docstrings, placed after their hard counterparts |
+| `test_bump.sh` | Added Tests 14-17 (26 total assertions for soft_ functions) |
+| `PLAN.md` | Marked all 3D tasks and review checklist complete |
+| `CLAUDE.md` | Added soft_ functions to Key Functions, documented hard/soft/parallel pattern (local only, gitignored) |
+
+### Key decisions
+
+1. **Placement:** Each soft_ function placed immediately after its hard counterpart in bump.sh
+2. **log_setting included:** Soft functions include `log_setting` calls like hard versions (unlike parallel_ versions which minimize logging)
+3. **soft_not_empty before log_setting:** In `soft_check_contains`, the `soft_not_empty "date stamp"` check must come before any `log_setting` calls to prevent the hard `not_empty` inside `log_setting` from calling cleanup
+4. **No new return codes:** All error codes already existed in return_codes.sh (MISSING_INPUT=60, MISSING_FILE=61, MISSING_CMD=65, BAD_CONFIGURATION=70)
+5. **Variable naming:** Follows existing prefix convention (sne_, sce_, scd_, scc_)
+
+### Test results
+
+- test_bump.sh: 17 tests, 70/70 assertions pass (including 26 new soft_ assertions)
+- test_bump_advanced.sh: 6 tests, 18/18 assertions pass
+- test_regression.sh: 13 tests, 23/23 assertions pass
+- **Total: 111 assertions, all passing**
+
+### Commits
+
+- `677e8c0` Add tests for soft_not_empty function
+- `80f2d6a` Implement soft_not_empty function
+- `e20d1b5` Add tests for soft_check_exists function
+- `f77ee90` Implement soft_check_exists function
+- `0416158` Add tests for soft_check_dependency function
+- `bea4b9f` Implement soft_check_dependency function
+- `4abc1a0` Add tests for soft_check_contains function
+- `adb3e35` Implement soft_check_contains function
+- `81bc3cc` Mark Phase 3D tasks complete in PLAN.md
