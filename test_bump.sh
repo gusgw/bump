@@ -597,6 +597,74 @@ function cleanup {
 }
 
 #############################################
+# Test 17: soft_check_contains
+#############################################
+test_start "soft_check_contains"
+
+# Restore cleanup to track calls
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    cleanup_called=1
+    cleanup_code=$c_rc
+    return $c_rc
+}
+
+# Create test file with content
+test_file="$TEST_DIR/soft_contains_test.txt"
+echo "Line 1: Hello World" > "$test_file"
+echo "Line 2: Test Content" >> "$test_file"
+
+# Test with existing string (should return 0)
+soft_check_contains "$test_file" "Hello World" 2>/dev/null
+assert_equals "0" "$?" "soft_check_contains returns 0 when string found"
+
+# Test with missing string (should return BAD_CONFIGURATION, NOT call cleanup)
+cleanup_called=0
+cleanup_code=0
+soft_check_contains "$test_file" "Missing String" 2>/dev/null
+assert_equals "$BAD_CONFIGURATION" "$?" "soft_check_contains returns BAD_CONFIGURATION (70) when string not found"
+assert_equals "0" "$cleanup_called" "soft_check_contains does NOT call cleanup (string not found)"
+
+# Test with non-existent file (should return MISSING_FILE, NOT call cleanup)
+cleanup_called=0
+cleanup_code=0
+soft_check_contains "$TEST_DIR/nonexistent_file" "any string" 2>/dev/null
+assert_equals "$MISSING_FILE" "$?" "soft_check_contains returns MISSING_FILE (61) for missing file"
+assert_equals "0" "$cleanup_called" "soft_check_contains does NOT call cleanup (missing file)"
+
+# Test error messages go to stderr
+error_output=$(soft_check_contains "$test_file" "Missing" 2>&1 >/dev/null)
+assert_contains "$error_output" "does not contain" "soft_check_contains logs 'does not contain' to stderr"
+
+error_output=$(soft_check_contains "$TEST_DIR/no_such_file" "any" 2>&1 >/dev/null)
+assert_contains "$error_output" "cannot find" "soft_check_contains logs 'cannot find' to stderr"
+
+# Test literal string matching (no regex interpretation)
+echo "plain text here" > "$test_file"
+soft_check_contains "$test_file" ".*" 2>/dev/null
+rc=$?
+assert_equals "$BAD_CONFIGURATION" "$rc" "soft_check_contains treats '.*' as literal (not regex)"
+
+# Test uses soft_not_empty internally (not not_empty)
+# If STAMP is empty, soft_check_contains should return MISSING_INPUT, not exit
+saved_stamp="$STAMP"
+STAMP=""
+cleanup_called=0
+soft_check_contains "$test_file" "plain" 2>/dev/null
+rc=$?
+STAMP="$saved_stamp"
+assert_equals "$MISSING_INPUT" "$rc" "soft_check_contains uses soft_not_empty (returns error, no exit)"
+assert_equals "0" "$cleanup_called" "soft_check_contains does NOT call cleanup when STAMP empty"
+
+# Restore cleanup
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    return $c_rc
+}
+
+#############################################
 # Test Summary
 #############################################
 echo -e "\n========================================="
