@@ -152,7 +152,8 @@ Defines standardized exit codes for consistent error reporting:
 Core utility functions including:
 
 - **Initialization**: `set_stamp`, `set_month`
-- **Validation**: `not_empty`, `check_exists`, `check_contains`, `check_dependency`
+- **Validation**: `not_empty`, `check_exists`, `check_contains`, `check_dependency`, `check_md5`
+- **Soft Validation**: `soft_not_empty`, `soft_check_exists`, `soft_check_contains`, `soft_check_dependency` (return error codes instead of exiting)
 - **Logging**: `log_setting`, `report`, `print_rule`
 - **Cleanup**: `cleanup`, `handle_signal`
 - **Monitoring**: `load_report`, `memory_report`, `free_memory_report`, `poll_reports`
@@ -215,6 +216,13 @@ not_empty "config file" "$CONFIG_FILE"
 
 # Check file contents
 check_contains "/etc/hosts" "localhost"
+
+# Soft checks: return error codes instead of exiting
+if soft_check_dependency "rsync"; then
+    rsync "$src" "$dst"
+else
+    cp -r "$src" "$dst"
+fi
 ```
 
 ### Error Handling
@@ -386,6 +394,43 @@ When running inside GNU Parallel, these variables are automatically set:
 - **check_md5**: Verify file checksum
   ```bash
   check_md5 "d41d8cd98f00b204e9800998ecf8427e" "/path/to/file"
+  ```
+
+#### Soft Validation Functions
+
+Soft variants return error codes instead of exiting the script, making them
+suitable for use in `if/then` conditional logic:
+
+- **soft_not_empty**: Check value is not empty (returns `MISSING_INPUT` 60 on failure)
+  ```bash
+  if soft_not_empty "config file" "$config"; then
+      source "$config"
+  else
+      echo "Using defaults"
+  fi
+  ```
+
+- **soft_check_exists**: Check file/directory exists (returns `MISSING_FILE` 61 on failure)
+  ```bash
+  if soft_check_exists "/etc/myapp.conf"; then
+      source "/etc/myapp.conf"
+  fi
+  ```
+
+- **soft_check_contains**: Check file contains string (returns `BAD_CONFIGURATION` 70 or `MISSING_FILE` 61)
+  ```bash
+  if soft_check_contains "/etc/hosts" "localhost"; then
+      echo "hosts file looks good"
+  fi
+  ```
+
+- **soft_check_dependency**: Check command exists (returns `MISSING_CMD` 65 on failure)
+  ```bash
+  if soft_check_dependency "rsync"; then
+      rsync "$src" "$dst"
+  else
+      cp -r "$src" "$dst"
+  fi
   ```
 
 #### Logging Functions
