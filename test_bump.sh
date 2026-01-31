@@ -561,6 +561,42 @@ function cleanup {
 }
 
 #############################################
+# Test 16: soft_check_dependency
+#############################################
+test_start "soft_check_dependency"
+
+# Restore cleanup to track calls
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    cleanup_called=1
+    cleanup_code=$c_rc
+    return $c_rc
+}
+
+# Test with existing command (bash should always exist)
+soft_check_dependency "bash" 2>/dev/null
+assert_equals "0" "$?" "soft_check_dependency returns 0 for existing command"
+
+# Test with non-existing command (should return MISSING_CMD, NOT call cleanup)
+cleanup_called=0
+cleanup_code=0
+soft_check_dependency "nonexistent_command_xyz_999" 2>/dev/null
+assert_equals "$MISSING_CMD" "$?" "soft_check_dependency returns MISSING_CMD (65) for missing command"
+assert_equals "0" "$cleanup_called" "soft_check_dependency does NOT call cleanup"
+
+# Test error message goes to stderr
+error_output=$(soft_check_dependency "nonexistent_command_xyz_999" 2>&1 >/dev/null)
+assert_contains "$error_output" "nonexistent_command_xyz_999" "soft_check_dependency logs missing command name to stderr"
+
+# Restore cleanup
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    return $c_rc
+}
+
+#############################################
 # Test Summary
 #############################################
 echo -e "\n========================================="
