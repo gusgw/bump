@@ -305,6 +305,43 @@ function check_contains {
     return 0
 }
 
+# soft_check_contains: Check that a file contains a string (non-fatal)
+#
+# Non-fatal variant of check_contains. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Uses soft_not_empty internally to avoid accidental script exit.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_contains "/path/to/file" "search_string"
+# Example:
+#   if soft_check_contains "/etc/hosts" "localhost"; then
+#       echo "hosts file looks good"
+#   else
+#       echo "hosts file may be misconfigured"
+#   fi
+# Args:
+#   $1 - Path to file to check
+#   $2 - Literal string to search for in the file
+# Returns: 0 if found, BAD_CONFIGURATION (70) if not found, MISSING_FILE (61) if file missing
+function soft_check_contains {
+    local scc_file_name="$1"
+    local scc_string="$2"
+    soft_not_empty "date stamp" "$STAMP" || return $?
+    log_setting "file name to check" "$scc_file_name"
+    log_setting "string to check for" "$scc_string"
+
+    if [[ -e "$scc_file_name" ]]; then
+        if ! grep -qsF "${scc_string}" "${scc_file_name}"; then
+            echo "${STAMP}: ${scc_file_name} does not contain ${scc_string}" >&2
+            return ${BAD_CONFIGURATION}
+        fi
+    else
+        echo "${STAMP}: cannot find ${scc_file_name}" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+
 # check_dependency: Verify that a command is available in PATH
 #
 # Checks if the specified command exists in the system PATH.
