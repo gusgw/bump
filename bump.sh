@@ -328,6 +328,32 @@ function check_dependency {
     return 0
 }
 
+# soft_check_dependency: Check that a command is available (non-fatal)
+#
+# Non-fatal variant of check_dependency. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_dependency "command_name"
+# Example:
+#   if soft_check_dependency "rsync"; then
+#       rsync "$src" "$dst"
+#   else
+#       cp -r "$src" "$dst"
+#   fi
+# Args:
+#   $1 - Name of the command to check
+# Returns: 0 if command exists, MISSING_CMD (65) if not
+function soft_check_dependency {
+    local scd_cmd="$1"
+    log_setting "command to check for is" "${scd_cmd}"
+    if ! command -v "${scd_cmd}" >/dev/null 2>&1; then
+        echo "${STAMP}: looking for ${scd_cmd} but it is not available" >&2
+        return ${MISSING_CMD}
+    fi
+    return 0
+}
+
 # path_as_name: Convert a file path to a safe filename
 #
 # Converts a path to a string suitable for use as a filename by:
