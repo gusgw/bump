@@ -1,6 +1,6 @@
 #!/bin/bash
 ##  Utility functions
-#   
+#
 #   This library provides common utility functions for bash scripts, including
 #   logging, error handling, file verification, and resource monitoring.
 #
@@ -14,7 +14,7 @@
 #   WAIT    is the time to wait in seconds between repeated attempts.
 #   RULE    is a separator to use in formatting outputs.
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 ##  Notes
 #   Run set_stamp and set_month before using the other routines.
@@ -58,10 +58,10 @@ WAIT=${WAIT:-5}
 RULE=${RULE:-"========================================"}
 
 # set_stamp: Generate a timestamp for labeling files and messages
-# 
+#
 # Creates a timestamp in the format YYYYMMDDTHHMMSS-hostname
 # The timestamp is exported as the global variable STAMP
-# 
+#
 # Usage: set_stamp
 # Example:
 #   set_stamp
@@ -82,10 +82,10 @@ function set_stamp {
 }
 
 # set_month: Set a global variable containing the current year and month
-# 
+#
 # Creates a YYYYMM formatted string for use in folder naming
 # The month is exported as the global variable MONTH
-# 
+#
 # Usage: set_month
 # Example:
 #   set_month
@@ -97,10 +97,10 @@ function set_month {
 }
 
 # not_empty: Validate that a value is not empty
-# 
+#
 # Checks if the provided value is non-empty. If empty, prints an error
 # message and calls cleanup with MISSING_INPUT exit code.
-# 
+#
 # Usage: not_empty "description" "value"
 # Example:
 #   not_empty "username" "$USER"
@@ -118,11 +118,38 @@ function not_empty {
     return 0
 }
 
+# soft_not_empty: Check that a value is not empty (non-fatal)
+#
+# Non-fatal variant of not_empty. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_not_empty "description" "$value"
+# Example:
+#   if soft_not_empty "config file" "$config"; then
+#       echo "config is set"
+#   else
+#       echo "config is missing, using default"
+#   fi
+# Args:
+#   $1 - Description of the value being checked
+#   $2 - The value to check
+# Returns: 0 if not empty, MISSING_INPUT (60) if empty
+function soft_not_empty {
+    local sne_description="$1"
+    local sne_check="$2"
+    if [[ -z "$sne_check" ]]; then
+        echo "${STAMP}: cannot run without ${sne_description}" >&2
+        return ${MISSING_INPUT}
+    fi
+    return 0
+}
+
 # log_message: Log a timestamped message to stderr
-# 
+#
 # Outputs a message prefixed with the global STAMP timestamp to stderr.
 # Validates that both STAMP and the message are non-empty before logging.
-# 
+#
 # Usage: log_message "message to log"
 # Example:
 #   log_message "Backup started successfully"
@@ -138,10 +165,10 @@ function log_message {
 
 
 # log_setting: Log a setting value to stderr
-# 
+#
 # Validates that both the setting and STAMP are non-empty, then logs
 # the setting description and value to stderr.
-# 
+#
 # Usage: log_setting "description" "value"
 # Example:
 #   log_setting "backup directory" "/var/backups"
@@ -159,10 +186,10 @@ function log_setting {
 }
 
 # check_exists: Verify that a file, directory, or link exists
-# 
+#
 # Checks if the specified path exists. If not, prints an error message
 # and calls cleanup with MISSING_FILE exit code.
-# 
+#
 # Usage: check_exists "/path/to/file"
 # Example:
 #   check_exists "/etc/passwd"
@@ -179,11 +206,37 @@ function check_exists {
     return 0
 }
 
+# soft_check_exists: Check that a file or directory exists (non-fatal)
+#
+# Non-fatal variant of check_exists. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_exists "/path/to/check"
+# Example:
+#   if soft_check_exists "/etc/myapp.conf"; then
+#       source "/etc/myapp.conf"
+#   else
+#       echo "Using defaults"
+#   fi
+# Args:
+#   $1 - Path to check for existence
+# Returns: 0 if exists, MISSING_FILE (61) if not
+function soft_check_exists {
+    local sce_file_name="$1"
+    log_setting "file or directory name that must exist" "$sce_file_name"
+    if [[ ! -e "$sce_file_name" ]]; then
+        echo "${STAMP}: cannot find $sce_file_name" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+
 # check_md5: Verify the MD5 checksum of a file
-# 
+#
 # Computes the MD5 checksum of the specified file and compares it
 # to the expected value. Reports success or failure.
-# 
+#
 # Usage: check_md5 "expected_md5" "/path/to/file"
 # Example:
 #   check_md5 "d41d8cd98f00b204e9800998ecf8427e" "/tmp/empty_file"
@@ -252,11 +305,48 @@ function check_contains {
     return 0
 }
 
+# soft_check_contains: Check that a file contains a string (non-fatal)
+#
+# Non-fatal variant of check_contains. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Uses soft_not_empty internally to avoid accidental script exit.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_contains "/path/to/file" "search_string"
+# Example:
+#   if soft_check_contains "/etc/hosts" "localhost"; then
+#       echo "hosts file looks good"
+#   else
+#       echo "hosts file may be misconfigured"
+#   fi
+# Args:
+#   $1 - Path to file to check
+#   $2 - Literal string to search for in the file
+# Returns: 0 if found, BAD_CONFIGURATION (70) if not found, MISSING_FILE (61) if file missing
+function soft_check_contains {
+    local scc_file_name="$1"
+    local scc_string="$2"
+    soft_not_empty "date stamp" "$STAMP" || return $?
+    log_setting "file name to check" "$scc_file_name"
+    log_setting "string to check for" "$scc_string"
+
+    if [[ -e "$scc_file_name" ]]; then
+        if ! grep -qsF "${scc_string}" "${scc_file_name}"; then
+            echo "${STAMP}: ${scc_file_name} does not contain ${scc_string}" >&2
+            return ${BAD_CONFIGURATION}
+        fi
+    else
+        echo "${STAMP}: cannot find ${scc_file_name}" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+
 # check_dependency: Verify that a command is available in PATH
-# 
+#
 # Checks if the specified command exists in the system PATH.
 # Calls report with MISSING_CMD exit code if not found.
-# 
+#
 # Usage: check_dependency "command_name"
 # Example:
 #   check_dependency "rsync"
@@ -275,13 +365,39 @@ function check_dependency {
     return 0
 }
 
+# soft_check_dependency: Check that a command is available (non-fatal)
+#
+# Non-fatal variant of check_dependency. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_dependency "command_name"
+# Example:
+#   if soft_check_dependency "rsync"; then
+#       rsync "$src" "$dst"
+#   else
+#       cp -r "$src" "$dst"
+#   fi
+# Args:
+#   $1 - Name of the command to check
+# Returns: 0 if command exists, MISSING_CMD (65) if not
+function soft_check_dependency {
+    local scd_cmd="$1"
+    log_setting "command to check for is" "${scd_cmd}"
+    if ! command -v "${scd_cmd}" >/dev/null 2>&1; then
+        echo "${STAMP}: looking for ${scd_cmd} but it is not available" >&2
+        return ${MISSING_CMD}
+    fi
+    return 0
+}
+
 # path_as_name: Convert a file path to a safe filename
-# 
+#
 # Converts a path to a string suitable for use as a filename by:
 # - Removing leading slash
 # - Replacing slashes with hyphens
 # - Replacing spaces with underscores
-# 
+#
 # Usage: name=$(path_as_name "/path/to/file")
 # Example:
 #   path_as_name "/var/log/syslog" # Output: var-log-syslog
@@ -303,12 +419,12 @@ function path_as_name {
 }
 
 # report: Report an error with optional cleanup
-# 
-# Reports a non-zero return code with description. 
+#
+# Reports a non-zero return code with description.
 # - If exit_message ($3) IS provided: Logs error, calls cleanup, and EXITS the script.
 # - If exit_message ($3) is NOT provided: Logs error and CONTINUES execution.
-# 
-# Usage: 
+#
+# Usage:
 #   report 1 "operation failed"                 # Log and continue
 #   report 1 "critical failure" "exiting now"   # Log and exit
 #
@@ -332,11 +448,11 @@ function report {
 }
 
 # slow: Wait for all processes with given name to terminate
-# 
+#
 # Monitors running processes by name and waits for them to complete.
 # Useful for ensuring processes like rsync have fully terminated.
 # Uses global WAIT variable for sleep interval (default 5 seconds).
-# 
+#
 # Usage: slow "process_name"
 # Example:
 #   slow "rsync"
@@ -358,10 +474,10 @@ function slow {
 }
 
 # print_rule: Print a separator line to stdout
-# 
+#
 # Prints the global RULE variable as a visual separator.
 # Default rule is a line of equals signs.
-# 
+#
 # Usage: print_rule
 # Example:
 #   print_rule  # Outputs: ========================================
@@ -371,10 +487,10 @@ function print_rule {
 }
 
 # print_error_rule: Print a separator line to stderr
-# 
+#
 # Prints the global RULE variable as a visual separator to stderr.
 # Default rule is a line of equals signs.
-# 
+#
 # Usage: print_error_rule
 # Example:
 #   print_error_rule >&2
@@ -386,21 +502,21 @@ function print_error_rule {
 cleanup_functions=()
 
 # cleanup: Execute cleanup functions and exit with specified code
-# 
+#
 # Runs all registered cleanup functions in order, then exits.
 # Cleanup functions must have names starting with "cleanup_".
 # Can be used as a signal handler.
-# 
+#
 # WARNING: If using the report function here, do not use
 #          a third argument! If you do you will get an
 #          infinite loop.
-# 
+#
 # Usage: cleanup exit_code
 # Example:
 #   # Define cleanup function
 #   function cleanup_temp_files { rm -rf "$TEMP_DIR"; }
 #   cleanup_functions+=("cleanup_temp_files")
-#   
+#
 #   # Call cleanup on error
 #   cleanup 1
 # Args:
@@ -418,7 +534,7 @@ function cleanup {
 
     print_error_rule
     echo "${STAMP}: exiting cleanly with code ${c_rc}. . ." >&2
-    
+
     local cleanfn
     for cleanfn in "${cleanup_functions[@]}"; do
         if [[ "$cleanfn" == cleanup_* ]]; then
@@ -436,10 +552,10 @@ function cleanup {
 }
 
 # handle_signal: Signal handler that calls cleanup
-# 
+#
 # Used as a trap handler for signals. Logs the signal and calls
 # cleanup with TRAPPED_SIGNAL exit code.
-# 
+#
 # Usage: trap handle_signal SIGINT SIGTERM
 # Returns: Does not return - calls cleanup which exits
 function handle_signal {
@@ -448,10 +564,10 @@ function handle_signal {
 }
 
 # load_report: Record system load average to a file
-# 
+#
 # Appends current system load (1, 5, 15 minute averages) with timestamp
 # to the specified file. Uses /proc/loadavg on Linux systems.
-# 
+#
 # Usage: load_report "label" "/path/to/load.log"
 # Example:
 #   load_report "backup_job" "/var/log/backup_load.log"
@@ -493,10 +609,10 @@ function load_report {
 }
 
 # memory_report: Record process memory usage to a file
-# 
+#
 # Captures peak memory (VmHWM) and current memory (VmRSS) usage for
 # a specific process and appends to a log file.
-# 
+#
 # Usage: memory_report "label" pid "/path/to/memory.log"
 # Example:
 #   memory_report "backup_job" $$ "/var/log/backup_memory.log"
@@ -554,10 +670,10 @@ function memory_report {
 }
 
 # free_memory_report: Record system memory availability to a file
-# 
+#
 # Captures available memory and free swap space in megabytes and
 # appends to a log file with timestamp.
-# 
+#
 # Usage: free_memory_report "label" "/path/to/memory.log"
 # Example:
 #   free_memory_report "system_status" "/var/log/system_memory.log"
@@ -622,11 +738,11 @@ function free_memory_report {
 }
 
 # poll_reports: Continuously monitor and log system resources
-# 
+#
 # Polls system load, process memory, and free memory at regular intervals
 # while a monitored process is running. Logs data to specified files.
 # Requires global variables: job, logs, ramdisk
-# 
+#
 # Usage: poll_reports monitor_pid label_pid wait_seconds
 # Example:
 #   job="backup"; logs="/var/log"; ramdisk="/tmp"
