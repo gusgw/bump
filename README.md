@@ -152,7 +152,8 @@ Defines standardized exit codes for consistent error reporting:
 Core utility functions including:
 
 - **Initialization**: `set_stamp`, `set_month`
-- **Validation**: `not_empty`, `check_exists`, `check_contains`, `check_dependency`
+- **Validation**: `not_empty`, `check_exists`, `check_contains`, `check_dependency`, `check_md5`
+- **Soft Validation**: `soft_not_empty`, `soft_check_exists`, `soft_check_contains`, `soft_check_dependency` (return error codes instead of exiting)
 - **Logging**: `log_setting`, `report`, `print_rule`
 - **Cleanup**: `cleanup`, `handle_signal`
 - **Monitoring**: `load_report`, `memory_report`, `free_memory_report`, `poll_reports`
@@ -215,6 +216,13 @@ not_empty "config file" "$CONFIG_FILE"
 
 # Check file contents
 check_contains "/etc/hosts" "localhost"
+
+# Soft checks: return error codes instead of exiting
+if soft_check_dependency "rsync"; then
+    rsync "$src" "$dst"
+else
+    cp -r "$src" "$dst"
+fi
 ```
 
 ### Error Handling
@@ -248,6 +256,40 @@ poll_reports $main_pid $$ 30 &  # Poll every 30 seconds
 
 ### Using with GNU Parallel
 
+BUMP's parallel support follows a clear division of responsibilities between
+the main process and worker processes:
+
+```
+Main Process:
+├── Validate dependencies (check_dependency)
+├── Validate shared inputs (check_exists, check_md5, check_contains)
+├── Launch parallel workers
+├── Monitor system resources (poll_reports)
+│   ├── load_report
+│   ├── memory_report
+│   └── free_memory_report
+├── Wait for completion
+└── Cleanup (cleanup)
+
+Worker Process (per input):
+├── Validate own input (parallel_check_exists)
+├── Log configuration (parallel_log_setting)
+├── Process input
+│   ├── Launch subprocess if needed
+│   └── Manage subprocess load (apply_niceload)
+├── Report errors (parallel_report)
+└── Cleanup worker resources (parallel_cleanup)
+```
+
+**Key Principles:**
+1. **Validate once:** Main process validates dependencies and shared resources before launching workers
+2. **Monitor centrally:** Main process monitors all workers collectively with `poll_reports`
+3. **Workers are simple:** Each worker validates its own input, processes it, and reports errors
+4. **Errors don't stop others:** Workers use `parallel_report` instead of `report` with an exit message, so one failure doesn't kill the entire parallel session
+5. **Cleanup is minimal:** Workers handle their own resources; the main process handles complex cleanup
+
+#### Basic Parallel Example
+
 ```bash
 #!/bin/bash
 script_path=$(dirname "$(readlink -f "$0")")
@@ -262,19 +304,105 @@ function process_file {
     local file=$1
     parallel_check_exists "$file" || return $?
     parallel_log_setting "processing" "$file"
-    
+
     # Process the file
     if ! some_processing "$file"; then
         parallel_report $? "processing $file"
         return $?
     fi
-    
+
     parallel_cleanup 0
 }
 
 # Run in parallel
 find /data -name "*.txt" | parallel -j 4 process_file
 ```
+
+#### Production Parallel Example with Load Management
+
+This pattern is used in production for long-running parallel jobs where each
+worker launches a subprocess that needs load management:
+
+```bash
+#!/bin/bash
+script_path=$(dirname "$(readlink -f "$0")")
+. "${script_path}/bump/return_codes.sh"
+. "${script_path}/bump/bump.sh"
+. "${script_path}/bump/parallel.sh"
+
+set_stamp
+export STAMP
+
+job="data_processing"
+logs="/var/log/myapp"
+ramdisk="/dev/shm/myapp"
+target_load="4.0"
+
+export job logs ramdisk target_load
+
+# Worker function — exported for GNU Parallel
+function run {
+    local work="$1"
+    local input="$2"
+
+    parallel_log_setting "workspace" "${work}"
+    parallel_log_setting "file to work on" "${input}"
+
+    parallel_check_exists "${input}" || return $?
+    mkdir -p "${work}" || parallel_report "$?" "creating workspace"
+    parallel_check_exists "${work}" || return $?
+
+    # Launch long-running subprocess
+    some_long_running_command "${input}" "${work}/output" &
+    local mainid=$!
+
+    # Monitor subprocess and manage system load
+    while kill -0 "${mainid}" 2>/dev/null; do
+        sleep ${WAIT}
+        apply_niceload "${mainid}" "${ramdisk}/workers" "${target_load}"
+    done
+
+    wait $mainid || parallel_report $? "waiting for processing to finish"
+
+    parallel_cleanup 0
+    return 0
+}
+export -f run
+
+# Main process: validate environment
+check_dependency "parallel"
+check_exists "$logs"
+mkdir -p "$ramdisk"
+
+# Launch parallel workers
+find "${work}" -name "*.input" | \
+    parallel --results "${logs}/run/{/}/" \
+             --joblog "${logs}/${STAMP}.${job}.run.log" \
+             --jobs 8 \
+        run "${work}/{/.}" {} &
+parallel_pid=$!
+
+# Main process: monitor resources centrally
+poll_reports "$parallel_pid" "$$" "${WAIT}" &
+report_pid=$!
+
+# Wait for completion
+wait $parallel_pid
+rc=$?
+
+kill $report_pid 2>/dev/null
+[ $rc -ne 0 ] && report $rc "parallel processing" "some jobs failed"
+
+cleanup 0
+```
+
+In this pattern:
+- `apply_niceload` uses the `kids()` function internally to find all
+  descendant processes and applies load limiting via GNU `niceload`
+- The main process uses `poll_reports` to log system load, process memory,
+  and free memory at regular intervals
+- Workers track their controlled PIDs in a shared file on ramdisk to avoid
+  duplicate load control
 
 ## Global Variables
 
@@ -388,6 +516,43 @@ When running inside GNU Parallel, these variables are automatically set:
   check_md5 "d41d8cd98f00b204e9800998ecf8427e" "/path/to/file"
   ```
 
+#### Soft Validation Functions
+
+Soft variants return error codes instead of exiting the script, making them
+suitable for use in `if/then` conditional logic:
+
+- **soft_not_empty**: Check value is not empty (returns `MISSING_INPUT` 60 on failure)
+  ```bash
+  if soft_not_empty "config file" "$config"; then
+      source "$config"
+  else
+      echo "Using defaults"
+  fi
+  ```
+
+- **soft_check_exists**: Check file/directory exists (returns `MISSING_FILE` 61 on failure)
+  ```bash
+  if soft_check_exists "/etc/myapp.conf"; then
+      source "/etc/myapp.conf"
+  fi
+  ```
+
+- **soft_check_contains**: Check file contains string (returns `BAD_CONFIGURATION` 70 or `MISSING_FILE` 61)
+  ```bash
+  if soft_check_contains "/etc/hosts" "localhost"; then
+      echo "hosts file looks good"
+  fi
+  ```
+
+- **soft_check_dependency**: Check command exists (returns `MISSING_CMD` 65 on failure)
+  ```bash
+  if soft_check_dependency "rsync"; then
+      rsync "$src" "$dst"
+  else
+      cp -r "$src" "$dst"
+  fi
+  ```
+
 #### Logging Functions
 
 - **log_message**: Log a simple message
@@ -434,6 +599,49 @@ All parallel functions follow the same pattern as core functions but:
 - Return error codes instead of calling cleanup
 - Include GNU Parallel job identifiers in output (PARALLEL_PID, PARALLEL_JOBSLOT, PARALLEL_SEQ)
 - Are exported for use in subshells
+
+- **parallel_not_empty**: Validate non-empty values
+  ```bash
+  parallel_not_empty "description" "$value"
+  ```
+
+- **parallel_log_message**: Log a message with parallel job identifiers
+  ```bash
+  parallel_log_message "processing started"
+  ```
+
+- **parallel_log_setting**: Log a setting with parallel job identifiers
+  ```bash
+  parallel_log_setting "input file" "$file"
+  ```
+
+- **parallel_report**: Report an error without exiting
+  ```bash
+  parallel_report $? "operation failed"
+  ```
+
+- **parallel_check_exists**: Check file/directory exists
+  ```bash
+  parallel_check_exists "$file" || return $?
+  ```
+
+- **parallel_cleanup**: Execute cleanup for a parallel worker
+  ```bash
+  parallel_cleanup 0  # Worker finished successfully
+  ```
+
+- **kids**: Recursively find all child processes of a PID (Linux-specific, uses /proc)
+  ```bash
+  for child_pid in $(kids $parent_pid); do
+      echo "Child: $child_pid"
+  done
+  ```
+
+- **apply_niceload**: Apply GNU `niceload` to a process tree for load limiting.
+  Tracks controlled PIDs in a file to avoid duplicate control.
+  ```bash
+  apply_niceload $main_pid "$ramdisk/workers" "4.0"
+  ```
 
 ## Examples
 
