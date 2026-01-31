@@ -514,6 +514,53 @@ function cleanup {
 }
 
 #############################################
+# Test 15: soft_check_exists
+#############################################
+test_start "soft_check_exists"
+
+# Restore cleanup to track calls
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    cleanup_called=1
+    cleanup_code=$c_rc
+    return $c_rc
+}
+
+# Test with existing file
+test_file="$TEST_DIR/soft_exists_test.txt"
+echo "test" > "$test_file"
+soft_check_exists "$test_file" 2>/dev/null
+assert_equals "0" "$?" "soft_check_exists returns 0 for existing file"
+
+# Test with existing directory
+soft_check_exists "$TEST_DIR" 2>/dev/null
+assert_equals "0" "$?" "soft_check_exists returns 0 for existing directory"
+
+# Test with non-existing path (should return MISSING_FILE, NOT call cleanup)
+cleanup_called=0
+cleanup_code=0
+soft_check_exists "$TEST_DIR/nonexistent_file" 2>/dev/null
+assert_equals "$MISSING_FILE" "$?" "soft_check_exists returns MISSING_FILE (61) for missing path"
+assert_equals "0" "$cleanup_called" "soft_check_exists does NOT call cleanup"
+
+# Test error message goes to stderr
+error_output=$(soft_check_exists "$TEST_DIR/missing_file" 2>&1 >/dev/null)
+assert_contains "$error_output" "cannot find" "soft_check_exists logs error to stderr"
+
+# Test with symlink
+ln -sf "$test_file" "$TEST_DIR/soft_exists_link"
+soft_check_exists "$TEST_DIR/soft_exists_link" 2>/dev/null
+assert_equals "0" "$?" "soft_check_exists returns 0 for symlink"
+
+# Restore cleanup
+function cleanup {
+    local c_rc="${1:-0}"
+    echo "cleanup called with exit code: $c_rc" >&2
+    return $c_rc
+}
+
+#############################################
 # Test Summary
 #############################################
 echo -e "\n========================================="
