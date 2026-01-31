@@ -206,6 +206,32 @@ function check_exists {
     return 0
 }
 
+# soft_check_exists: Check that a file or directory exists (non-fatal)
+#
+# Non-fatal variant of check_exists. Returns an error code instead of
+# calling cleanup, so the calling script can handle the failure.
+# Suitable for use in if/then conditional logic.
+#
+# Usage: soft_check_exists "/path/to/check"
+# Example:
+#   if soft_check_exists "/etc/myapp.conf"; then
+#       source "/etc/myapp.conf"
+#   else
+#       echo "Using defaults"
+#   fi
+# Args:
+#   $1 - Path to check for existence
+# Returns: 0 if exists, MISSING_FILE (61) if not
+function soft_check_exists {
+    local sce_file_name="$1"
+    log_setting "file or directory name that must exist" "$sce_file_name"
+    if [[ ! -e "$sce_file_name" ]]; then
+        echo "${STAMP}: cannot find $sce_file_name" >&2
+        return ${MISSING_FILE}
+    fi
+    return 0
+}
+
 # check_md5: Verify the MD5 checksum of a file
 #
 # Computes the MD5 checksum of the specified file and compares it
