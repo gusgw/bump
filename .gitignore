@@ -1,7 +1,11 @@
 .*swp
 
+# Ignore all markdown files except README.md and CHANGELOG.md
+*.md
+!README.md
+!CHANGELOG.md
+
 # Ignore any robot experiments
-CLAUDE.md
 .claude
 .idea
 .junie
@@ -11,4 +15,3 @@ CLAUDE.md
 coverage/
 baseline_coverage.html
 test_baseline_results.txt
-
