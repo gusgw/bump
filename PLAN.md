@@ -715,7 +715,7 @@ test_regression.sh currently tests 7 bugs:
 code instead of calling cleanup(). Functions are placed in bump.sh immediately after
 their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
 
-- [ ] **3D.1: Write tests for soft_not_empty**
+- [x] **3D.1: Write tests for soft_not_empty**
   - Add tests to test_bump.sh alongside hard counterpart tests
   - Test: returns 0 when value is non-empty
   - Test: returns MISSING_INPUT (60) when value is empty
@@ -725,7 +725,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Tests FAIL (function doesn't exist yet)
   - **Commit:** "Add tests for soft_not_empty function"
 
-- [ ] **3D.2: Implement soft_not_empty**
+- [x] **3D.2: Implement soft_not_empty**
   - Add to bump.sh immediately after not_empty (after line ~119)
   - Implementation:
     ```bash
@@ -743,7 +743,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Existing tests still pass
   - **Commit:** "Implement soft_not_empty function"
 
-- [ ] **3D.3: Write tests for soft_check_exists**
+- [x] **3D.3: Write tests for soft_check_exists**
   - Test: returns 0 when file/directory exists
   - Test: returns MISSING_FILE (61) when path does not exist
   - Test: does NOT call cleanup (script continues)
@@ -752,7 +752,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Tests FAIL (function doesn't exist yet)
   - **Commit:** "Add tests for soft_check_exists function"
 
-- [ ] **3D.4: Implement soft_check_exists**
+- [x] **3D.4: Implement soft_check_exists**
   - Add to bump.sh immediately after check_exists (after line ~180)
   - Implementation:
     ```bash
@@ -770,7 +770,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Existing tests still pass
   - **Commit:** "Implement soft_check_exists function"
 
-- [ ] **3D.5: Write tests for soft_check_dependency**
+- [x] **3D.5: Write tests for soft_check_dependency**
   - Test: returns 0 when command exists (e.g., "bash")
   - Test: returns MISSING_CMD (65) when command not found
   - Test: does NOT call cleanup (script continues)
@@ -778,7 +778,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Tests FAIL (function doesn't exist yet)
   - **Commit:** "Add tests for soft_check_dependency function"
 
-- [ ] **3D.6: Implement soft_check_dependency**
+- [x] **3D.6: Implement soft_check_dependency**
   - Add to bump.sh immediately after check_dependency (after line ~276)
   - Implementation:
     ```bash
@@ -796,7 +796,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Existing tests still pass
   - **Commit:** "Implement soft_check_dependency function"
 
-- [ ] **3D.7: Write tests for soft_check_contains**
+- [x] **3D.7: Write tests for soft_check_contains**
   - Test: returns 0 when file contains the string
   - Test: returns BAD_CONFIGURATION (70) when file exists but string not found
   - Test: returns MISSING_FILE (61) when file does not exist
@@ -806,7 +806,7 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Tests FAIL (function doesn't exist yet)
   - **Commit:** "Add tests for soft_check_contains function"
 
-- [ ] **3D.8: Implement soft_check_contains**
+- [x] **3D.8: Implement soft_check_contains**
   - Add to bump.sh immediately after check_contains (after line ~253)
   - Implementation:
     ```bash
@@ -832,14 +832,14 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
   - **Verify:** Existing tests still pass
   - **Commit:** "Implement soft_check_contains function"
 
-- [ ] **3D.9: Run full test suite and verify coverage**
+- [x] **3D.9: Run full test suite and verify coverage**
   - Run `./run_all_tests.sh`
   - **Verify:** ALL tests pass (existing + new soft_ tests)
   - **Verify:** Coverage still at 90%+
   - **Verify:** No regressions in any test suite
   - **Commit:** (no commit needed unless fixes required)
 
-- [ ] **3D.10: Update documentation**
+- [x] **3D.10: Update documentation**
   - Add soft_ function documentation to bump.sh function headers
   - Update CLAUDE.md Key Functions section to mention soft_ variants
   - Document the pattern: hard = exits, soft = returns code
@@ -849,12 +849,12 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
 ### ⏸️ STOP FOR REVIEW - Soft Check Functions Complete
 
 **Review Checklist:**
-- [ ] All 4 soft_ functions implemented and tested
-- [ ] All soft_ function tests passing
-- [ ] All existing tests still passing
-- [ ] No regressions introduced
-- [ ] Functions return correct error codes
-- [ ] Documentation updated
+- [x] All 4 soft_ functions implemented and tested
+- [x] All soft_ function tests passing
+- [x] All existing tests still passing
+- [x] No regressions introduced
+- [x] Functions return correct error codes
+- [x] Documentation updated
 
 **Deliverables:**
 - soft_not_empty, soft_check_exists, soft_check_dependency, soft_check_contains in bump.sh
@@ -1005,8 +1005,8 @@ their hard counterpart. Error messages use `${STAMP}:` prefix and go to stderr.
 - [ ] No new critical bugs introduced
 - [ ] Code follows consistent style
 - [ ] All functions well-documented
-- [ ] All 4 soft_ check functions implemented with tests
-- [ ] Soft functions return correct error codes without calling cleanup
+- [x] All 4 soft_ check functions implemented with tests
+- [x] Soft functions return correct error codes without calling cleanup
 
 ### Testing
 - [ ] ALL regression tests passing (100%)
