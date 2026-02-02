@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-02-01
+
+### Fixed
+- Fixed test suite hang when `run_all_tests.sh` runs in output capture mode,
+  caused by `apply_niceload` launching background `niceload` processes that
+  inherit file descriptors
+- Simplified `kids()` subprocess tree test to avoid nested subshell complexity
+
+### Changed
+- CI workflow now triggers on PRs and pushes to both `main` and `develop`
+- CI workflow has 10-minute job timeout as safety net
+- `run_all_tests.sh` uses temp file redirect instead of `$()` subshell capture
+
 ## [1.2.0] - 2026-01-31
 
 ### Added
