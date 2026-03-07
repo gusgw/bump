@@ -14,7 +14,7 @@
 #   WAIT    is the time to wait in seconds between repeated attempts.
 #   RULE    is a separator to use in formatting outputs.
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 ##  Notes
 #   Run set_stamp and set_month before using the other routines.
