@@ -355,7 +355,7 @@ function soft_check_contains {
 # Returns: 0 if command exists, calls report with MISSING_CMD if not
 function check_dependency {
     local cd_cmd="$1"
-    log_setting "command to check for is" "${cd_cmd}"
+    log_setting "command to check for" "${cd_cmd}"
     if ! command -v "${cd_cmd}" >/dev/null 2>&1; then
         report ${MISSING_CMD} \
                "looking for ${cd_cmd}" \
